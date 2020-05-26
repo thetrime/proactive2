@@ -14,29 +14,6 @@ serve_form(Request):-
         parse_url(URL, [path('/react')|R1]),
         format(atom(Bootstrap), 'Proactive.render("~w", "~w", document.getElementById("container"))', [URL, FormId]),
 
-
-        /*
-        Bootstrap = ' class MyReactBootstrapButton extends React.Component {
-        constructor(props) {
-          super(props);
-        }
-        render() {
-          var ButtonGroup = ReactBootstrap.ButtonGroup,
-          Button  = ReactBootstrap.Button;
-
-          return (<div>
-            <ButtonGroup>
-              <Button>Left</Button>
-              <Button>Middle</Button>
-              <Button>Right</Button>
-            </ButtonGroup>
-          </div>);
-        }
-      };
-      ReactDOM.render(<MyReactBootstrapButton />, document.getElementById("container"));',
-        */
-
-
         HTML = element(html, [], [element(head, [], [element(script, [src='https://unpkg.com/react/umd/react.production.min.js', crossorigin=anonymous], []),
                                                      element(script, [src='https://unpkg.com/react-dom/umd/react-dom.production.min.js', crossorigin=anonymous], []),
                                                      element(script, [src='/assets/proactive.js'], []),
