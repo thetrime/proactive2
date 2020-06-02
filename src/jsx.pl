@@ -32,7 +32,8 @@ jsx_node(Dict, FinalNode, Goals, GoalsTail, Singletons, SingletonsTail) -->
         optional_spaces,
         `<`,
         jsx_tag(Tag), optional_spaces, jsx_attributes(Dict, Attributes, Goals, G1),
-        { ( prolog_load_context(module, Module),
+        { ( fail, % Not needed for proactive-2.0
+            prolog_load_context(module, Module),
             current_predicate(Module:depends_on/1),           
             Module:depends_on(Tag)->
              Node = widget(Tag, Attributes, Content)
@@ -212,7 +213,7 @@ jsx_attributes(Dict, [Name=Value|Attributes], Goals, GoalsTail)-->
         ).
 jsx_attributes(_, [], G, G)--> [].
 
-% read_until_open_tag//1 reads until we hit either < or {
+% read_until_open_tag//1 reads until we hit either < or {r
 read_until_open_tag([], [60|C], [60|C]):- !.
 read_until_open_tag([], [123|C], [123|C]):- !.
 read_until_open_tag([Code|Codes])-->

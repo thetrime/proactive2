@@ -120,3 +120,13 @@ react_clause(Module, Head):-
         clause(Module:tabled_predicate(SourceModule, Name/Arity), true),
         functor(Head, Name, Arity),
         call(SourceModule:Head).
+
+user:term_expansion(requires(X), [depends_on(X), :-react:do_load_react_module(X)]).
+
+:-multifile(react:load_react_module/1).
+
+do_load_react_module(X):-
+        ( react:load_react_module(X)->
+            true
+        ; use_module(X)
+        ).
