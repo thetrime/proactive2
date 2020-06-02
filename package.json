@@ -1,0 +1,28 @@
+{
+    "name": "proactive",
+    "version": "0.2.0",
+    "description": "React in Prolog",
+    "main": "proscript.js",
+    "dependencies": {
+        "browserify": "^13.3.0",
+        "uglify-es": "^3.3.9",
+        "uglify-js": "^3.9.4",
+        "xmlhttprequest": "^1.8.0"
+    },
+    "devDependencies": {},
+    "scripts": {
+        "start": "STATIC_ROOT=./static watchify src/core.js --standalone Proactive -t brfs -v -o build/proactive.js",
+        "install": "make CLIENTS=js-client package",
+        "test": "echo 'No tests created yet'"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thetrime/proactive2.git"
+    },
+    "author": "",
+    "license": "LGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/thetrime/proactive2/issues"
+    },
+    "homepage": "https://github.com/thetrime/proactive2#readme"
+}

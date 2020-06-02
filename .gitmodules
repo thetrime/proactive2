@@ -1,0 +1,3 @@
+[submodule "proscript2"]
+	path = proscript2
+	url = https://github.com/thetrime/proscript2.git

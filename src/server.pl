@@ -3,7 +3,15 @@
 :- use_module(library(http/http_files)).
 
 :-http_handler(root('proactive/'), serve_form, [prefix]).
-:-http_handler(root('assets/'), http_reply_from_files(assets, []), [prefix]).
+%:-http_handler(root('assets/'), http_reply_from_files(assets, []), [prefix]).
+user:term_expansion(:-serve_lib, :-http_handler(root('lib/'), http_reply_from_files(Location, []), [prefix])):-
+        setup_call_cleanup(open('VERSION', read, S),
+                           read_string(S, _, Version),
+                           close(S)),
+        format(atom(Location), 'proactive-~s/lib', [Version]).
+
+:-serve_lib.
+
 
 main:-
         http_server(http_dispatch, [port(8880)]).
@@ -12,12 +20,12 @@ serve_form(Request):-
         memberchk(path_info(FormId), Request),
         subtract(Request, [path(_)], R1),
         parse_url(URL, [path('/react')|R1]),
+
         format(atom(Bootstrap), 'window.onPrologReady = function() {Proactive.render("~w", "~w", document.getElementById("container"));}', [URL, FormId]),
 
         HTML = element(html, [], [element(head, [], [element(script, [src='https://unpkg.com/react/umd/react.production.min.js', crossorigin=anonymous], []),
                                                      element(script, [src='https://unpkg.com/react-dom/umd/react-dom.production.min.js', crossorigin=anonymous], []),
-                                                     element(script, [src='/assets/proscript_standalone.js'], []),
-                                                     element(script, [src='/assets/proactive.js'], []),
+                                                     element(script, [src='/lib/proactive.js'], []),
                                                      element(link, [rel=stylesheet,
                                                                     href='https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css',
                                                                     integrity='sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh',
@@ -27,6 +35,7 @@ serve_form(Request):-
                                                      element(script, [type='text/javascript'], [Bootstrap])])]),
         format(current_output, 'Content-type: text/html~n~n', []),
         html_write(current_output, HTML, []).
+
 
 :-http_handler(root('react/component'), serve_component, [prefix]).
 

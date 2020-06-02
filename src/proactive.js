@@ -1,5 +1,5 @@
-//var Prolog = require('proscript');
-var Prolog = Proscript;
+var Prolog = require('proscript2');
+//var Prolog = Proscript;
 var getInitialStateFunctor;
 var renderFunctor;
 var crossModuleCallFunctor;
