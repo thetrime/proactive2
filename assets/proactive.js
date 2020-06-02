@@ -1,4 +1,4 @@
-// var Prolog = require('proscript');
+//var Prolog = require('proscript');
 var Prolog = Proscript;
 var getInitialStateFunctor;
 var renderFunctor;
@@ -133,6 +133,7 @@ Proactive = {render: function(url, module, container)
                              if (rc == 4)
                              {
                                  console.log("Exception in render/3:" + Prolog.portray(Prolog.get_exception()));
+                                 return React.createElement('div', null, `Failed to render component`);
                              }
                              if (rc == 1)
                              {
@@ -141,7 +142,7 @@ Proactive = {render: function(url, module, container)
                              }
                              else
                              {
-                                 // Trouble here
+                                 // failure
                                  return React.createElement('div', null, `Failed to render component`);
                              }
                          }
