@@ -49,28 +49,6 @@ function emptyState()
 }
 
 
-// FIXME: Delete
-function dot(state, key, value)
-{
-    if (isNull(state))
-    {
-        return Null(value)
-    }
-    else if (!Prolog.is_blob(state, "state"))
-    {
-        // FIXME: Raise Type error instead
-        throw new Error("oops: Not a state");
-    }
-    if (Prolog.is_atom(key))
-    {
-        console.log(Prolog.get_blob("state", state));
-        return Prolog.unify(value, Prolog.get_blob("state", state).get(key));
-    }
-    else
-        throw new Error("oops: key is not atomic");
-}
-
-
 
 Proactive = {render: function(url, module, container)
              {
@@ -87,16 +65,32 @@ Proactive = {render: function(url, module, container)
                  emptyListAtom = Prolog.make_atom("[]");
                  nullAtom = Prolog.make_atom("null");
                  classes = {};
-                 //Prolog.define_foreign(".", dot);
                  Prolog.consult_string(dot);
                  Prolog.consult_url(url + "/component/" + module, function()
                                     {
-                                        // For each solution to current_predicate(Module:render/3), do this:
-                                        this.classes["foo"] = defineProactiveComponent("foo");
-                                        this.classes["bar"] = defineProactiveComponent("bar"); // etc
+                                        var Components = Prolog.make_variable();
+                                        var Goal = Prolog.make_compound(Prolog.make_functor(Prolog.make_atom("get_components"), 1), [Components]);
+                                        console.log("Calling " + Prolog.portray(Goal));
+                                        var rc = Prolog.call({}, Goal);
+                                        if (rc == 1)
+                                        {
+                                            console.log("ok1");
+                                            Prolog.forEach(Components,
+                                                           function(Module)
+                                                           {
+                                                               this.classes[Prolog.atom_chars(Module)] = defineProactiveComponent(Prolog.atom_chars(Module));
+                                                           },
+                                                           function() {}
+                                                          );
+                                            ReactDOM.render(React.createElement(classes[module], null, []), container);
+                                        }
+                                        else if (rc == 4)
+                                        {
+                                            console.log("Exception getting components:" + Prolog.portray(Prolog.get_exception()));
+                                        }
+                                        else
+                                            console.log("Failed to get components: " + rc);
 
-                                        ReactDOM.render(React.createElement(classes[module], null, []), container);
-                                        //ReactDOM.render(React.createElement(ProactiveForm, null, []), container);
                                     });
 
                  function defineProactiveComponent(module)

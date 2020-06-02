@@ -71,6 +71,16 @@ serve_component(Request):-
                 TargetStream = current_output
             ),
             format(current_output, 'Content-Type: text/prolog~n~n', []),
+
+            % We emit this list of components in module(user) because proscript does not have current_module/1 and current_predicate/1 is not module-aware
+            findall(Component,
+                    ( member(Component, ModulesWithoutDuplicates),
+                      current_predicate(Component:render/3)
+                    ),
+                    Components),
+            write_term(TargetStream, get_components(Components), [numbervars(true), quoted(true), ignore_ops(true)]),
+            writeln(TargetStream, '.'),
+
             forall(member(Clause, Clauses),
                    ( numbervars(Clause, 0, _, [singletons(true)]),
                      write_term(TargetStream, Clause, [numbervars(true), quoted(true), ignore_ops(true)]),
