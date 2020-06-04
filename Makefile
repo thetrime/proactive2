@@ -20,7 +20,7 @@ proactive-${VERSION}/lib/proactive.js:	src/proactive.js node_modules/uglify-js n
 ifeq ($(MINIFY),true)
 	NODE_PATH=. node_modules/browserify/bin/cmd.js src/proactive.js | node_modules/uglify-es/bin/uglifyjs  -m  > $@
 else
-	NODE_PATH=. node_modules/browserify/bin/cmd.js Proactive src/proactive.js  > $@
+	NODE_PATH=. node_modules/browserify/bin/cmd.js src/proactive.js > $@
 endif
 
 proactive-${VERSION}/lib/proscript.wasm:
