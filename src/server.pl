@@ -2,6 +2,8 @@
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_files)).
 
+:- use_module(src/jsx).
+
 :-http_handler(root('proactive/'), serve_form, [prefix]).
 %:-http_handler(root('assets/'), http_reply_from_files(assets, []), [prefix]).
 user:term_expansion(:-serve_lib, :-http_handler(root('lib/'), http_reply_from_files(Location, []), [prefix])):-

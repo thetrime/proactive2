@@ -1,5 +1,6 @@
 :-module(bar,[]).
 
-render(_, _, Form):-
+render(State, Props, Form):-
+        writeln(hello_from_bar:Props),
         {|jsx(Form)||
         <div>This is a bar</div>|}.

@@ -1,4 +1,5 @@
 var Prolog = require('proscript2');
+
 //var Prolog = Proscript;
 var getInitialStateFunctor;
 var renderFunctor;
@@ -12,18 +13,44 @@ var equalsFunctor;
 var dictFunctor;
 var dictPairFunctor;
 
-var dot = "'.'(State, Key, Value):-\
-        ( State == {null} ->\
-            Value = {null}\
-        ; State = {Key: Value}->\
-            true\
-        ; State = {Key: Value, _}->\
-            true\
-        ; State = {_, Values},\
-          '.'(Values, Key, Value)->\
-            true\
-        ; Value = {null}\
-        ), writeln(after(State, Key, Value)).";
+function jsListToProlog(js)
+{
+    var list = [];
+    for (var i = 0; i < js.length; i++)
+        list.push(jsToProlog(js[i]));
+    return list;
+}
+
+function jsToProlog(js)
+{
+    if (js.atom !== undefined)
+        return Prolog.make_atom(js.atom);
+    if (js.integer !== undefined)
+        return Prolog.make_integer(js.integer);
+    else if (js.compound !== undefined)
+        return Prolog.make_compound(Prolog.make_functor(Prolog.make_atom(js.compound.name), js.compound.args.length), jsListToProlog(js.compound.args));
+}
+
+function dot(State, Key, Value)
+{
+    if (isNull(State))
+    {
+        return Prolog.unify(Value, Prolog.make_compound(Constants.curlyFunctor, [Constants.nullAtom]));
+    }
+    if (!Prolog.is_blob(State, "state"))
+    {
+        return Errors.typeError(Constants.prologStateAtom, State);
+    }
+    if (Prolog.is_atom(Key))
+    {
+        var key = Prolog.atom_chars(Key);
+        console.log("Is a key: " + key);
+        console.log(Prolog.get_blob("state", State));
+        return Prolog.unify(Value, jsToProlog(Prolog.get_blob("state", State)[key]));
+    }
+    throw new Error("Oops2");
+    return 0;
+}
 
 
 function isEventHandler(e)
@@ -65,7 +92,7 @@ Proactive = {render: function(url, module, container)
                  emptyListAtom = Prolog.make_atom("[]");
                  nullAtom = Prolog.make_atom("null");
                  classes = {};
-                 Prolog.consult_string(dot);
+                 Prolog.define_foreign(".", dot);
                  Prolog.consult_url(url + "/component/" + module, function()
                                     {
                                         var Components = Prolog.make_variable();
@@ -100,36 +127,48 @@ Proactive = {render: function(url, module, container)
                          constructor(props)
                          {
                              super(props);
+                             console.log("Props in JS: "); console.log(props);
                              this.env = {};
-                             this._props = Prolog.make_blob("props", props)
                              if (Prolog.exists_predicate(Prolog.make_atom(module), getInitialStateFunctor))
                              {
                                  var State = Prolog.make_variable();
+                                 var Props = Prolog.make_blob("props", this.props);
+                                 console.log("Created Props: " + Props);
                                  var Goal = Prolog.make_compound(crossModuleCallFunctor,
                                                                  [Prolog.make_atom(module), Prolog.make_compound(getInitialStateFunctor,
-                                                                                                                 [this._props, State])]);
-                                 if (Prolog.call({}, Goal) == 1)
+                                                                                                                 [Props, State])]);
+                                 var rc = Prolog.call({}, Goal);
+                                 Prolog.release_blob("props", Props);
+                                 if (rc == 1)
                                  {
-                                     this.state = {blob: Prolog.make_local(State)};
+                                     this.state = this.termToJS(State);
+                                     console.log("Got initial state: " );
+                                     console.log(this.state);
+                                     console.log("from " + Prolog.portray(State));
                                  }
                                  else
                                  {
-                                     this.state = {blob: emptyState()};
+                                     this.state = {}
                                  }
                              }
                              else
                              {
-                                 this.state = {blob: emptyState()};
+                                 this.state = {}
                              }
                          }
                          render()
                          {
                              console.log("Rendering...");
+                             console.log(this._props);
                              var Form = Prolog.make_variable();
+                             var State = Prolog.make_blob("state", this.state);
+                             var Props = Prolog.make_blob("props", this.props);
                              var Goal = Prolog.make_compound(crossModuleCallFunctor,
                                                              [Prolog.make_atom(module), Prolog.make_compound(renderFunctor,
-                                                                                                             [this.state.blob, this._props, Form])]);
+                                                                                                             [State, Props, Form])]);
                              var rc = Prolog.call({}, Goal);
+                             Prolog.release_blob("state", State);
+                             Prolog.release_blob("props", Props);
                              if (rc == 4)
                              {
                                  console.log("Exception in render/3:" + Prolog.portray(Prolog.get_exception()));
@@ -189,7 +228,36 @@ Proactive = {render: function(url, module, container)
                              return null;
                          }
 
-                         dictToJS(Term)
+                         termToJS(Term)
+                         {
+                             if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == curlyFunctor)
+                             {
+                                 return this.dictEntriesToJS(Prolog.term_arg(Term, 0));
+                             }
+                             else if (Prolog.is_atom(Term))
+                             {
+                                 return {atom: Prolog.atom_chars(Term)};
+                             }
+                             else if (Prolog.is_compound(Term))
+                             {
+                                 var args = [];
+                                 for (var i = 0; i < Prolog.term_functor_arity(Term); i++)
+                                 {
+                                     args.push(this.termToJS(Prolog.term_arg(Term, i)));
+                                 }
+                                 return {compound: {name: Prolog.term_functor_name(Term), args: args}}
+                             }
+                             else if (Prolog.is_integer(Term))
+                             {
+                                 return {integer: Prolog.numeric_value(Term)};
+                             }
+                             else
+                             {
+                                 console.log("No JS for " + Prolog.portray(Term));
+                             }
+                         }
+
+                         dictEntriesToJS(Term)
                          {
                              var map = {};
                              while (Prolog.is_compound(Term) && Prolog.term_functor(Term) == dictFunctor)
@@ -199,8 +267,7 @@ Proactive = {render: function(url, module, container)
                                  if (Prolog.is_compound(Head) && Prolog.term_functor(Head) == dictPairFunctor)
                                  {
                                      var name = Prolog.atom_chars(Prolog.term_arg(Head, 0));
-                                     // FIXME: Really this should be something like termToJS() since the value is not necessarily an atom
-                                     var value = Prolog.atom_chars(Prolog.term_arg(Head, 1));
+                                     var value = this.termToJS(Prolog.term_arg(Term, 1));
                                      map[name] = value;
                                  }
                              }
@@ -208,8 +275,7 @@ Proactive = {render: function(url, module, container)
                              if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == dictPairFunctor)
                              {
                                  var name = Prolog.atom_chars(Prolog.term_arg(Term, 0));
-                                 // FIXME: Really this should be something like termToJS() since the value is not necessarily an atom
-                                 var value = Prolog.atom_chars(Prolog.term_arg(Term, 1));
+                                 var value = this.termToJS(Prolog.term_arg(Term, 1));
                                  map[name] = value;
                              }
                              return map;
@@ -235,9 +301,13 @@ Proactive = {render: function(url, module, container)
                                      {
                                          map[name] = Prolog.atom_chars(Value);
                                      }
-                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == dictFunctor)
+                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == dictFunctor) // FIXME: Suspect?
                                      {
-                                         map[name] = this.dictToJS(Value);
+                                         map[name] = this.dictEntriesToJS(Value);
+                                     }
+                                     else if (Prolog.is_compound(Value))
+                                     {
+                                         map[name] = this.termToJS(Value);
                                      }
                                      else
                                      {
@@ -256,23 +326,26 @@ Proactive = {render: function(url, module, container)
                              var parent = this;
                              return function(e)
                              {
-                                 console.log("hello");
-                                 console.log(this);
                                  var NewState = Prolog.make_variable();
                                  var PrologEvent = Prolog.make_variable(); // FIXME: Put a representation of e in here
+                                 var State = Prolog.make_blob("state", this.state);
+                                 var Props = Prolog.make_blob("props", this.props);
                                  var Goal = Prolog.make_compound(crossModuleCallFunctor,
                                                                  [Prolog.make_atom(module), Prolog.make_compound(Handler,
-                                                                                                                 [PrologEvent, this.state.blob, this._props, NewState])]);
+                                                                                                                 [PrologEvent, State, Props, NewState])]);
                                  Prolog.execute({},
                                                 Goal,
                                                 function(success)
                                                 {
+                                                    Prolog.release_blob("state", State);
+                                                    Prolog.release_blob("props", Props);
                                                     console.log("Result: " + success);
                                                     if (success)
                                                     {
-                                                        // FIXME: Actually want to *merge* the states here. If the state was stored as a JS object, React would do this for us.
-                                                        console.log(parent);
-                                                        parent.setState({blob: Prolog.make_local(NewState)});
+                                                        var newState = parent.termToJS(NewState);
+                                                        console.log("New state: ");
+                                                        console.log(newState);
+                                                        parent.setState(newState);
                                                     }
 
                                                 });
