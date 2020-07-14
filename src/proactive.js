@@ -20,6 +20,7 @@ Proactive = {render: function(url, module, container)
              {
                  console.log("Welcome to Proactive 2.0");
                  var Constants = require('./constants');
+                 var PrologUtilities = require('./prolog_utilities');
                  classes = {};
                  Prolog.define_foreign(".", require('./dot'));
                  Prolog.define_foreign("on_server", require('./on_server')(url));
@@ -58,13 +59,13 @@ Proactive = {render: function(url, module, container)
                              if (Prolog.exists_predicate(Prolog.make_atom(module), Constants.getInitialStateFunctor))
                              {
                                  var State = Prolog.make_variable();
-                                 var Props = Prolog.make_blob("props", this.props);
+                                 var Props = this.make_dict(this.props);
                                  var Goal = Prolog.make_compound(Constants.crossModuleCallFunctor,
                                                                  [Prolog.make_atom(module), Prolog.make_compound(Constants.getInitialStateFunctor,
                                                                                                                  [Props, State])]);
                                  var checkpoint = Prolog.save_state();
                                  var rc = Prolog.call({}, Goal);
-                                 Prolog.release_blob("props", Props);
+                                 Prolog.release_blob("dict", Props);
                                  if (rc == 1)
                                  {
                                      this.state = this.termToJS(State);
@@ -80,20 +81,23 @@ Proactive = {render: function(url, module, container)
                                  this.state = {}
                              }
                          }
+
+                         make_dict(data)
+                         {
+                             return Prolog.make_blob("dict", {portray: PrologUtilities.portray_dict, data: data});
+                         }
+
                          render()
                          {
-                             console.log("Rendering...");
                              var Form = Prolog.make_variable();
-                             var State = Prolog.make_blob("state", this.state);
-                             var Props = Prolog.make_blob("props", this.props);
+                             var State = this.make_dict(this.state);
+                             var Props = this.make_dict(this.props);
                              var Goal = Prolog.make_compound(Constants.crossModuleCallFunctor,
                                                              [Prolog.make_atom(module), Prolog.make_compound(Constants.renderFunctor,
                                                                                                              [State, Props, Form])]);
-                             console.log("Running: " + Prolog.portray(Goal));
                              var rc = Prolog.call({}, Goal);
-                             console.log("Result: " + rc);
-                             Prolog.release_blob("state", State);
-                             Prolog.release_blob("props", Props);
+                             Prolog.release_blob("dict", State);
+                             Prolog.release_blob("dict", Props);
                              if (rc == 4)
                              {
                                  console.log("Exception in render/3:" + Prolog.portray(Prolog.get_exception()));
@@ -258,8 +262,8 @@ Proactive = {render: function(url, module, container)
                              {
                                  var NewState = Prolog.make_variable();
                                  var PrologEvent = Prolog.make_variable(); // FIXME: Put a representation of e in here
-                                 var State = Prolog.make_blob("state", this.state);
-                                 var Props = Prolog.make_blob("props", this.props);
+                                 var State = this.make_dict(this.state);
+                                 var Props = this.make_dict(this.props);
                                  var Goal = Prolog.make_compound(Constants.crossModuleCallFunctor,
                                                                  [Prolog.make_atom(module), Prolog.make_compound(Handler,
                                                                                                                  [PrologEvent, State, Props, NewState])]);
@@ -268,8 +272,8 @@ Proactive = {render: function(url, module, container)
                                                 Goal,
                                                 function(success)
                                                 {
-                                                    Prolog.release_blob("state", State);
-                                                    Prolog.release_blob("props", Props);
+                                                    Prolog.release_blob("dict", State);
+                                                    Prolog.release_blob("dict", Props);
                                                     if (success)
                                                     {
                                                         var newState = parent.termToJS(NewState);

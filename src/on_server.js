@@ -5,7 +5,6 @@ var Constants = require('./constants');
 
 
 var qOp = null;
-var foreign = 0;
 
 function indicateBusy()
 {
@@ -17,19 +16,34 @@ function indicateReady()
     // FIXME: Implement
 }
 
+
+function delete_states(t)
+{
+    if (Prolog.is_blob(t, "dict"))
+        return Prolog.make_variable();
+    else if (Prolog.is_compound(t))
+    {
+        var arity = Prolog.term_functor_arity(t);
+        var new_args = Array(arity);
+        for (var i = 0; i < arity; i++)
+            new_args[i] = delete_states(Prolog.term_arg(t, i));
+        return Prolog.make_compound(Prolog.term_functor(t), new_args);
+    }
+    return t;
+}
+
+
 module.exports = function(url)
 {
     var goalURI = "ws" + url.substring(4) + "/goal";
     return function(Goal)
     {
-        console.log("hello");
-        // FIXME: Complain if we are inside render()
         var resume = Prolog._yield();
         var ws;
-        if (foreign)
+        if (this.foreign)
         {
             // We are backtracking. Try to get another solution by sending a ; and then yielding
-            ws = Prolog.get_blob("websocket", foreign);
+            ws = Prolog.get_blob("websocket", this.foreign);
             ws.send(";");
             return 3; // YIELD
         }
@@ -46,22 +60,22 @@ module.exports = function(url)
         {
             ws.send(Prolog.format_term(qOp, 1200, Goal) + ".\n");
             // Since any PrologState objects in the goal will never unify with the response, replace them all with variables
-            // FIXME: Implement?
-            // goal = delete_states(goal);
+            // Note that this means you cannot send a state with variables in it, unify them on the server, and expect them to be unified
+            // in the client. If we want to support that, then we will need to make sure that we can unify states
+            Goal = delete_states(Goal);
             ws.send(";");
             // This is all we do for now. Either we will get an error, find out that the goal failed, or that it succeeded
         }
         ws.cleanup = function()
         {
             indicateReady();
-            if (foreign)
-                Prolog.release_blob("websocket", foreign);
-            foreign = 0;
+            if (this.foreign)
+                Prolog.release_blob("websocket", this.foreign);
+            this.foreign = 0;
             ws.close();
         };
         ws.onmessage = function(event)
         {
-            //console.log("Got a message: " + util.inspect(event.data));
             if (ws.state == "new")
             {
                 ws.state = "connected";
@@ -104,8 +118,8 @@ module.exports = function(url)
                 else
                 {
                     // OK, we need a backtrack point here so we can retry
-                    if (foreign)
-                        Prolog.make_choicepoint_with_cleanup(foreign, ws.cleanup);
+                    if (this.foreign)
+                        Prolog.make_choicepoint_with_cleanup(this.foreign, ws.cleanup);
                     else
                         Prolog.make_choicepoint_with_cleanup(Prolog.make_blob("websocket", ws), ws.cleanup);
                     var rc = Prolog.unify(Goal, Prolog.copy_term(Prolog.term_arg(term, 0)));
@@ -123,6 +137,6 @@ module.exports = function(url)
             Errors.systemError(Prolog.make_atom(event.toString()));
             resume(0);
         }
-        return 3; //  YIELD
+    return 3; //  YIELD
     }
 }

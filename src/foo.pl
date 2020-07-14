@@ -23,6 +23,9 @@ render(State, _Props, Form):-
 getInitialState(_, {counter: 0}).
 
 someEvent(_Event, State, _Props, {counter: NewCounter}):-
-        on_server(writeln(ohai)),
+        findall(X,
+                on_server(??member(X, [a,b,c,State])),
+                Xs),
+        writeln(Xs),
         NewCounter is State.counter + 1.
 

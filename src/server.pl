@@ -5,6 +5,10 @@
 :- use_module(library(http/http_session)).
 
 :- use_module(src/jsx).
+:- include(src/testing).
+
+:- use_module(src/foo).
+:- use_module(src/bar).
 
 :-http_handler(root('react/goal'), execute_proactive, []).
 :-http_handler(root('proactive/'), serve_form, [prefix]).
@@ -122,7 +126,7 @@ check_data(";").
 :-meta_predicate(execute_proactive_goal(+, 0)).
 execute_proactive_goal(OriginalRequest, Goal):-
         ( predicate_property(react:react_goal_hook(_, _), number_of_clauses(_))->
-            react_goal_hook(OriginalRequest, Goal)
+            react:react_goal_hook(OriginalRequest, Goal)
         ; Goal
         ).
         
@@ -154,7 +158,7 @@ handle_proactive_goal_exception(E, WebSocket):-
 	; otherwise->
 	    send_reply(WebSocket, exception(E))
         ),
-        ignore(react_exception_hook(E)).
+        ignore(react:react_exception_hook(E)).
 
 
 send_reply(WebSocket, Term):-
@@ -296,3 +300,6 @@ do_load_react_module(X):-
             true
         ; use_module(X)
         ).
+
+:-meta_predicate(on_server(0)).
+on_server(Goal):- Goal.

@@ -15,7 +15,7 @@
                                        format(user_error, 'EXIT ~q~n', [Goal])
                                    ; Catcher == ! ->
                                        format(user_error, 'CUT  ~q~n', [Goal])
-                                   ; Catcher = error(Error)->
+                                   ; Catcher = exception(Error)->
                                        format(user_error, 'ERROR ~q ~p~n', [Goal, Error])
                                    )),
         ( var(Catcher)->
@@ -35,7 +35,7 @@
                                        format(user_error, 'EXIT ~q~n', [Functor/Arity])
                                    ; Catcher == ! ->
                                        format(user_error, 'CUT  ~q~n', [Functor/Arity])
-                                   ; Catcher = error(Error)->
+                                   ; Catcher = exception(Error)->
                                        format(user_error, 'ERROR ~q ~p~n', [Functor/Arity, Error])
                                    )),
         ( var(Catcher)->

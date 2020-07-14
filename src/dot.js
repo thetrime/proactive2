@@ -21,7 +21,7 @@ module.exports = function(State, Key, Value)
     {
         return Prolog.unify(Value, Prolog.make_compound(Constants.curlyFunctor, [Constants.nullAtom]));
     }
-    if (!Prolog.is_blob(State, "state"))
+    if (!Prolog.is_blob(State, "dict"))
     {
         // FIXME: Errors does not exist. Neither does Constants.
         return Errors.typeError(Constants.prologStateAtom, State);
@@ -29,7 +29,7 @@ module.exports = function(State, Key, Value)
     if (Prolog.is_atom(Key))
     {
         var key = Prolog.atom_chars(Key);
-        return Prolog.unify(Value, PrologUtilities.jsToProlog(Prolog.get_blob("state", State)[key]));
+        return Prolog.unify(Value, PrologUtilities.jsToProlog(Prolog.get_blob("dict", State).data[key]));
     }
     throw new Error("Oops2");
     return 0;

@@ -12,4 +12,8 @@ module.exports = {getInitialStateFunctor: Prolog.make_functor(Prolog.make_atom("
                   dictPairFunctor: Prolog.make_functor(Prolog.make_atom(":"), 2),
                   curlyFunctor: Prolog.make_functor(Prolog.make_atom("{}"), 1),
                   emptyListAtom: Prolog.make_atom("[]"),
-                  nullAtom: Prolog.make_atom("null")};
+                  nullAtom: Prolog.make_atom("null"),
+                  cutFunctor: Prolog.make_functor(Prolog.make_atom("cut"), 1),
+                  exceptionFunctor : Prolog.make_functor(Prolog.make_atom("exception"), 1),
+                  failAtom: Prolog.make_atom("fail"),
+                  abortedAtom: Prolog.make_atom("$aborted")};
