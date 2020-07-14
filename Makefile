@@ -23,5 +23,5 @@ else
 	NODE_PATH=. node_modules/browserify/bin/cmd.js src/proactive.js > $@
 endif
 
-proactive-${VERSION}/lib/proscript.wasm:
+proactive-${VERSION}/lib/proscript.wasm: proscript2/proscript.wasm
 	cp proscript2/proscript.wasm $@
