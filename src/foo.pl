@@ -5,8 +5,6 @@
 requires('bar').
 
 render(State, _Props, Form):-
-        writeln(hello_from_prolog),
-        writeln(State),
 
 %        findall(Widget,
 %                ( between(1, 5000, I),
