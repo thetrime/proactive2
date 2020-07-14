@@ -7,9 +7,6 @@
 :- use_module(src/jsx).
 :- include(src/testing).
 
-:- use_module(src/foo).
-:- use_module(src/bar).
-
 :-http_handler(root('react/goal'), execute_proactive, []).
 :-http_handler(root('proactive/'), serve_form, [prefix]).
 %:-http_handler(root('assets/'), http_reply_from_files(assets, []), [prefix]).
@@ -303,3 +300,8 @@ do_load_react_module(X):-
 
 :-meta_predicate(on_server(0)).
 on_server(Goal):- Goal.
+
+
+
+:- use_module(src/foo).
+:- use_module(src/bar).
