@@ -39,6 +39,7 @@ function dot(State, Key, Value)
     }
     if (!Prolog.is_blob(State, "state"))
     {
+        // FIXME: Errors does not exist. Neither does Constants.
         return Errors.typeError(Constants.prologStateAtom, State);
     }
     if (Prolog.is_atom(Key))
@@ -67,14 +68,6 @@ function Null(value)
 {
     return Prolog.unify(value, Prolog.make_compound(curlyFunctor, [nullAtom]));
 }
-
-function emptyState()
-{
-    var value = Prolog.make_variable();
-    Null(value);
-    return Prolog.make_local(value);
-}
-
 
 
 Proactive = {render: function(url, module, container)
@@ -133,7 +126,6 @@ Proactive = {render: function(url, module, container)
                              {
                                  var State = Prolog.make_variable();
                                  var Props = Prolog.make_blob("props", this.props);
-                                 console.log("Created Props: " + Props);
                                  var Goal = Prolog.make_compound(crossModuleCallFunctor,
                                                                  [Prolog.make_atom(module), Prolog.make_compound(getInitialStateFunctor,
                                                                                                                  [Props, State])]);
@@ -142,9 +134,6 @@ Proactive = {render: function(url, module, container)
                                  if (rc == 1)
                                  {
                                      this.state = this.termToJS(State);
-                                     console.log("Got initial state: " );
-                                     console.log(this.state);
-                                     console.log("from " + Prolog.portray(State));
                                  }
                                  else
                                  {
@@ -159,7 +148,6 @@ Proactive = {render: function(url, module, container)
                          render()
                          {
                              console.log("Rendering...");
-                             console.log(this._props);
                              var Form = Prolog.make_variable();
                              var State = Prolog.make_blob("state", this.state);
                              var Props = Prolog.make_blob("props", this.props);
@@ -207,8 +195,6 @@ Proactive = {render: function(url, module, container)
                                  var tag = Prolog.atom_chars(Prolog.term_arg(Term, 0));
                                  var attributes = this.attributesToJS(Prolog.term_arg(Term, 1));
                                  var children = this.listToDOM(Prolog.term_arg(Term, 2));
-                                 console.log("All set:");
-                                 console.log(attributes);
                                  if (classes[tag] !== undefined)
                                      return React.createElement(classes[tag], attributes, children);
                                  else if (ReactBootstrap[tag] !== undefined)
@@ -322,6 +308,7 @@ Proactive = {render: function(url, module, container)
 
                          makeEventHandler(Term)
                          {
+                             // FIXME: These Handler terms are never cleaned up
                              var Handler = Prolog.make_local(Term);
                              var parent = this;
                              return function(e)
@@ -339,13 +326,9 @@ Proactive = {render: function(url, module, container)
                                                 {
                                                     Prolog.release_blob("state", State);
                                                     Prolog.release_blob("props", Props);
-                                                    console.log("Result: " + success);
                                                     if (success)
                                                     {
-                                                        var newState = parent.termToJS(NewState);
-                                                        console.log("New state: ");
-                                                        console.log(newState);
-                                                        parent.setState(newState);
+                                                        parent.setState(parent.termToJS(NewState));
                                                     }
 
                                                 });
