@@ -26,6 +26,8 @@ Proactive = {render: function(url, module, container)
                  Prolog.define_foreign(".", require('./dot'));
                  Prolog.define_foreign("on_server", require('./on_server')(url));
                  Prolog.define_foreign("get_this", require('./get_this'));
+                 Prolog.define_foreign("media_size", require('./media_size'));
+                 Prolog.define_foreign("get_ticks", require('./get_ticks'));
                  Prolog.consult_url(url + "/component/" + module, function()
                                     {
                                         var checkpoint = Prolog.save_state();
@@ -159,8 +161,10 @@ Proactive = {render: function(url, module, container)
                              }
                              var Goal = Prolog.make_compound(Constants.crossModuleCallFunctor,
                                                              [Prolog.make_atom(module), Prolog.make_compound(Functor, args)]);
+                             console.log(Prolog.portray(Goal));
                              var rc = Prolog.execute(env, Goal, function(success)
                                                      {
+                                                         console.log(success);
                                                          handler.call(this, success);
                                                          Prolog.restore_state(checkpoint);
                                                          this.releaseEnvironment(env);
@@ -223,7 +227,10 @@ Proactive = {render: function(url, module, container)
                                  {
                                      // This is a plain old HTML object
                                      var attributes = this.attributesToJS(Prolog.term_arg(Term, 1));
-                                     return React.createElement(tag, attributes, children);
+                                     if (children.length == 0)
+                                         return React.createElement(tag, attributes);
+                                     else
+                                         return React.createElement(tag, attributes, children);
                                  }
 
                              }
@@ -282,8 +289,6 @@ Proactive = {render: function(url, module, container)
 
                          makeEventHandler(Term)
                          {
-                             // FIXME: These Handler terms are never cleaned up
-                             // FIXME: Also, if we have a $this term then we need to take some measures right away!
                              var target = this;
                              while (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.thisFunctor)
                              {
@@ -294,14 +299,16 @@ Proactive = {render: function(url, module, container)
                              var handler = PrologUtilities.prologToJS(Term);
                              return function(e)
                              {
-                                 var PrologEvent = Prolog.make_variable(); // FIXME: Put a representation of e in here
+                                 var PrologEvent = PrologUtilities.make_event(e);
                                  var NewState = Prolog.make_variable();
                                  var Handler = PrologUtilities.jsToProlog(handler);
                                  this.callAsynchronously(target.module, Handler, [PrologEvent, this.state, this.props, NewState], function(success)
                                                          {
+                                                             console.log("Event fired. REsult: " + success);
                                                              if (success)
                                                              {
                                                                  var newState = PrologUtilities.prologToJS(NewState);
+                                                                 console.log(target);
                                                                  target.setState(newState);
                                                              }
                                                          });

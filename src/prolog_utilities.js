@@ -10,7 +10,7 @@ function jsToProlog(js)
     else if (js.integer !== undefined)
         return Prolog.make_integer(js.integer);
     else if (js.compound !== undefined)
-        return Prolog.make_compound(Prolog.make_functor(Prolog.make_atom(js.compound.name), js.compound.args.length), jsListToProlog(js.compound.args));
+        return Prolog.make_compound(Prolog.make_functor(Prolog.make_atom(js.compound.name), js.compound.args.length), jsListToPrologArgs(js.compound.args));
     else if (js.widget !== undefined)
     {
         var Blob = Prolog.make_blob("widget", js.widget);
@@ -24,12 +24,20 @@ function jsToProlog(js)
     }
 };
 
-function jsListToProlog(js)
+function jsListToPrologArgs(js)
 {
     var list = [];
     for (var i = 0; i < js.length; i++)
         list.push(jsToProlog(js[i]));
     return list;
+};
+
+function jsListToProlog(js)
+{
+    var result = Constants.emptyListAtom;
+    for (var i = 0; i < js.length; i++)
+        result = Prolog.make_compound(Constants.listFunctor, [jsToProlog(js[i]), result]);
+    return result;
 };
 
 function Null()
@@ -114,8 +122,7 @@ function dictEntriesToJS(Term)
 };
 
 
-module.exports = {jsListToProlog: jsListToProlog,
-                  jsToProlog: jsToProlog,
+module.exports = {jsToProlog: jsToProlog,
                   Null: Null,
                   prologToJS: prologToJS,
                   dictEntriesToJS: dictEntriesToJS,
@@ -132,5 +139,9 @@ module.exports = {jsListToProlog: jsListToProlog,
                               output += ",";
                       }
                       return output + "}";
+                  },
+                  make_event: function(e)
+                  {
+                      return jsListToProlog([{compound: {name: "=", args: [{atom: "value"}, {atom: e.target.value}]}}]);
                   }
                  };

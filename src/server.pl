@@ -171,8 +171,9 @@ serve_form(Request):-
 
         format(atom(Bootstrap), 'window.onPrologReady = function() {Proactive.render("~w", "~w", document.getElementById("container"));}', [URL, FormId]),
 
-        HTML = element(html, [], [element(head, [], [element(script, [src='https://unpkg.com/react/umd/react.production.min.js', crossorigin=anonymous], []),
-                                                     element(script, [src='https://unpkg.com/react-dom/umd/react-dom.production.min.js', crossorigin=anonymous], []),
+        % Change development -> production.min to get minified version
+        HTML = element(html, [], [element(head, [], [element(script, [src='https://unpkg.com/react/umd/react.development.js', crossorigin=anonymous], []),
+                                                     element(script, [src='https://unpkg.com/react-dom/umd/react-dom.development.js', crossorigin=anonymous], []),
                                                      element(script, [src='/lib/proactive.js'], []),
                                                      element(link, [rel=stylesheet,
                                                                     href='https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css',
@@ -300,7 +301,7 @@ do_load_react_module(X):-
 
 :-meta_predicate(on_server(0)).
 on_server(Goal):- Goal.
-
+get_this(fixme).
 
 
 :- use_module(src/foo).
