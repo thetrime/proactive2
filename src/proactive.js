@@ -177,24 +177,12 @@ Proactive = {render: function(url, module, container)
                              var Form = Prolog.make_variable();
                              return this.callSynchronously(module, Constants.renderFunctor, [this.state, this.props, Form], function(rc)
                                                            {
-                                                               if (rc == 4)
+                                                               switch(rc)
                                                                {
-                                                                   console.log("Exception in render/3:" + Prolog.portray(Prolog.get_exception()));
-                                                                   return React.createElement('div', null, `Failed to render component`);
-                                                               }
-                                                               if (rc == 1)
-                                                               {
-                                                                   return this.nodeToDOM(Form);
-                                                               }
-                                                               else if (rc == 2)
-                                                               {
-                                                                   console.log("Warning: render/3 was nondet");
-                                                                   return this.nodeToDOM(Form);
-                                                               }
-                                                               else
-                                                               {
-                                                                   // failure
-                                                                   return React.createElement('div', null, `Failed to render component`);
+                                                                   case  2: console.log("Warning: render/3 was nondet"); /* Fall through */
+                                                                   case  1: return this.nodeToDOM(Form);
+                                                                   case  4: console.log("Exception in render/3:" + Prolog.portray(Prolog.get_exception())); /* Fall through */
+                                                                   default: return React.createElement('div', null, `Failed to render component`);
                                                                }
                                                            });
                          }
