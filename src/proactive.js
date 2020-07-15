@@ -18,7 +18,7 @@ Proactive = {render: function(url, module, container)
                  Prolog.define_foreign("get_this", require('./get_this'));
                  Prolog.define_foreign("media_size", require('./media_size'));
                  Prolog.define_foreign("get_ticks", require('./get_ticks'));
-                 Prolog.consult_url(url + "/component/" + module, function()
+                 Prolog.consult_url(url + "component/" + module, function()
                                     {
                                         var checkpoint = Prolog.save_state();
                                         var Components = Prolog.make_variable();

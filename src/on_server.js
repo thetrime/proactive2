@@ -23,7 +23,7 @@ function delete_states(t)
 
 module.exports = function(url)
 {
-    var goalURI = "ws" + url.substring(4) + "/goal";
+    var goalURI = "ws" + url.substring(4) + "goal";
     return function(Goal)
     {
         var resume = Prolog._yield();

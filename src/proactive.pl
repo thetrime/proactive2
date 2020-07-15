@@ -1,15 +1,11 @@
-:- use_module(library(http/thread_httpd)).
-:- use_module(library(http/http_dispatch)).
-:- use_module(library(http/http_files)).
-:- use_module(library(http/websocket)).
-:- use_module(library(http/http_session)).
+:-module(proactive,
+         []).
 
-:- use_module(src/jsx).
-:- include(src/testing).
 
-:-http_handler(root('react/goal'), execute_proactive, []).
-:-http_handler(root('proactive/'), serve_form, [prefix]).
-%:-http_handler(root('assets/'), http_reply_from_files(assets, []), [prefix]).
+:-http_handler(proactive(goal), execute_proactive, []).
+:-http_handler(proactive(form/FormId), serve_proactive_form(FormId), [prefix]).
+:-http_handler(proactive(component/FormId), serve_component(FormId), []).
+
 user:term_expansion(:-serve_lib, :-http_handler(root('lib/'), http_reply_from_files(Location, []), [prefix])):-
         setup_call_cleanup(open('VERSION', read, S),
                            read_string(S, _, Version),
@@ -19,9 +15,6 @@ user:term_expansion(:-serve_lib, :-http_handler(root('lib/'), http_reply_from_fi
 :-serve_lib.
 
 
-main:-
-        http_server(http_dispatch, [port(8880)]).
-
 
 execute_proactive(Request):-
         ( http_in_session(SessionID)->
@@ -30,7 +23,7 @@ execute_proactive(Request):-
         ),
         http_upgrade_to_websocket(execute_proactive_ws_guarded(SessionID, Request), [], Request).
 
-:-multifile(react:goal_is_safe/1).
+:-multifile(proactive:goal_is_safe/1).
 
 % SWI uses message_to_string/2 to print the message if there is an error
 % This is fine, bug RFC-6455 says that no control packet may be > 125 bytes, or fragmented
@@ -62,8 +55,6 @@ execute_proactive_ws(OriginalRequest, WebSocket):-
         ; Message.opcode == close->
             !
         ).
-
-goal_is_safe(_). % FIXME: Fix this
 
 read_proactive_goal_and_execute_if_safe(WebSocket, OriginalRequest, Data):-
         read_term_from_atom(Data, Goal, []),
@@ -117,13 +108,13 @@ execute_proactive_ws_1(OriginalRequest, Goal, ReplyGoal, WebSocket):-
 
 check_data(";").
 
-:-multifile(react:react_goal_hook/2).
-:-meta_predicate(react:react_goal_hook(+, 0)).
+:-multifile(proactive:react_goal_hook/2).
+:-meta_predicate(proactive:react_goal_hook(+, 0)).
 
 :-meta_predicate(execute_proactive_goal(+, 0)).
 execute_proactive_goal(OriginalRequest, Goal):-
-        ( predicate_property(react:react_goal_hook(_, _), number_of_clauses(_))->
-            react:react_goal_hook(OriginalRequest, Goal)
+        ( predicate_property(proactive:react_goal_hook(_, _), number_of_clauses(_))->
+            proactive:react_goal_hook(OriginalRequest, Goal)
         ; Goal
         ).
         
@@ -142,7 +133,7 @@ react_cleanup(_Goal, fail, WebSocket):-
 react_cleanup(Goal, !, WebSocket):-
         send_reply(WebSocket, cut(Goal)).
 
-:-multifile(react:react_exception_hook/1).
+:-multifile(proactive:react_exception_hook/1).
 
 handle_proactive_goal_exception(E, WebSocket):-
 	( E = error(Error, Context)->
@@ -155,7 +146,7 @@ handle_proactive_goal_exception(E, WebSocket):-
 	; otherwise->
 	    send_reply(WebSocket, exception(E))
         ),
-        ignore(react:react_exception_hook(E)).
+        ignore(proactive:react_exception_hook(E)).
 
 
 send_reply(WebSocket, Term):-
@@ -164,10 +155,10 @@ send_reply(WebSocket, Term):-
 
 
 
-serve_form(Request):-
-        memberchk(path_info(FormId), Request),
+serve_proactive_form(FormId, Request):-
         subtract(Request, [path(_)], R1),
-        parse_url(URL, [path('/react')|R1]),
+        http_absolute_location(proactive('.'), Path, []),
+        parse_url(URL, [path(Path)|R1]),
 
         format(atom(Bootstrap), 'window.onPrologReady = function() {Proactive.render("~w", "~w", document.getElementById("container"));}', [URL, FormId]),
 
@@ -186,17 +177,15 @@ serve_form(Request):-
         html_write(current_output, HTML, []).
 
 
-:-http_handler(root('react/component'), serve_component, [prefix]).
 
-:-multifile(react:allow_access_to_form/1).
+:-multifile(proactive:allow_access_to_form/1).
 
-serve_component(Request):-
-        memberchk(path(Path), Request),
-        atomic_list_concat(['', react, component, Module], '/', Path),
-        ( predicate_property(react:allow_access_to_form(_), number_of_clauses(_))->
-            ( react:allow_access_to_form(Module)->
+serve_component(Module, Request):-
+        ( predicate_property(proactive:allow_access_to_form(_), number_of_clauses(_))->
+            ( proactive:allow_access_to_form(Module)->
                 true
             ; otherwise->
+                memberchk(path(Path), Request),
                 throw(http_reply(forbidden(Path)))
             )
         ; true
@@ -289,20 +278,17 @@ react_clause(Module, Head):-
         functor(Head, Name, Arity),
         call(SourceModule:Head).
 
-user:term_expansion(requires(X), [depends_on(X), :-react:do_load_react_module(X)]).
+user:term_expansion(requires(X), [depends_on(X), :-proactive:do_load_react_module(X)]).
 
-:-multifile(react:load_react_module/1).
+:-multifile(proactive:load_react_module/1).
 
 do_load_react_module(X):-
-        ( react:load_react_module(X)->
+        ( proactive:load_react_module(X)->
             true
         ; use_module(X)
         ).
 
-:-meta_predicate(on_server(0)).
-on_server(Goal):- Goal.
-get_this(fixme).
+:-meta_predicate(user:on_server(0)).
+user:on_server(Goal):- Goal.
+user:get_this(fixme).
 
-
-:- use_module(src/foo).
-:- use_module(src/bar).
