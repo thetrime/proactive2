@@ -151,10 +151,8 @@ Proactive = {render: function(url, module, container)
                              }
                              var Goal = Prolog.make_compound(Constants.crossModuleCallFunctor,
                                                              [Prolog.make_atom(module), Prolog.make_compound(Functor, args)]);
-                             console.log(Prolog.portray(Goal));
                              var rc = Prolog.execute(env, Goal, function(success)
                                                      {
-                                                         console.log(success);
                                                          handler.call(this, success);
                                                          Prolog.restore_state(checkpoint);
                                                          this.releaseEnvironment(env);
@@ -294,11 +292,9 @@ Proactive = {render: function(url, module, container)
                                  var Handler = PrologUtilities.jsToProlog(handler);
                                  this.callAsynchronously(target.module, Handler, [PrologEvent, this.state, this.props, NewState], function(success)
                                                          {
-                                                             console.log("Event fired. REsult: " + success);
                                                              if (success)
                                                              {
                                                                  var newState = PrologUtilities.prologToJS(NewState);
-                                                                 console.log(target);
                                                                  target.setState(newState);
                                                              }
                                                          });
