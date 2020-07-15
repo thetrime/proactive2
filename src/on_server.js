@@ -3,19 +3,7 @@
 var Prolog = require('proscript2');
 var Constants = require('./constants');
 
-
 var qOp = null;
-
-function indicateBusy()
-{
-    // FIXME: Implement
-}
-
-function indicateReady()
-{
-    // FIXME: Implement
-}
-
 
 function delete_states(t)
 {
@@ -48,7 +36,8 @@ module.exports = function(url)
             return 3; // YIELD
         }
         // First, create the websocket
-        indicateBusy()
+        if (window.indicateBusy)
+            window.indicateBusy()
         ws = new WebSocket(goalURI);
         ws.state = "new";
         if (qOp == null)
@@ -68,7 +57,8 @@ module.exports = function(url)
         }
         ws.cleanup = function()
         {
-            indicateReady();
+            if (window.indicateReady)
+                window.indicateReady();
             if (this.foreign)
                 Prolog.release_blob("websocket", this.foreign);
             this.foreign = 0;

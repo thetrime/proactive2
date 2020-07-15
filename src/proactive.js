@@ -2,16 +2,6 @@ Prolog = require('proscript2');
 
 var next_id = 0;
 
-function indicateBusy()
-{
-    // FIXME: Implement
-}
-
-function indicateReady()
-{
-    // FIXME: Implement
-}
-
 function isEventHandler(e)
 {
     return e.startsWith("on");
