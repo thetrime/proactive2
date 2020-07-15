@@ -60,7 +60,7 @@ function listToJS(Term)
 
 }
 
-function prologToJS(Term, vars)
+function prologToJS(Term)
 {
     if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.curlyFunctor)
     {
@@ -107,7 +107,7 @@ function dictEntriesToJS(Term)
         if (Prolog.is_compound(Head) && Prolog.term_functor(Head) == Constants.dictPairFunctor)
         {
             var name = Prolog.atom_chars(Prolog.term_arg(Head, 0));
-            var value = prologToJS(Prolog.term_arg(Term, 1));
+            var value = prologToJS(Prolog.term_arg(Head, 1));
             map[name] = value;
         }
     }
