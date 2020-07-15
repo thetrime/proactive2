@@ -20,7 +20,6 @@ function jsToProlog(js)
     }
     else
     {
-        console.log(js);
         return Prolog.make_atom("<unknown>");
     }
 };

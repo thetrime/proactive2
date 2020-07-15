@@ -29,8 +29,6 @@ module.exports = function(State, Key, Value)
     if (Prolog.is_atom(Key))
     {
         var key = Prolog.atom_chars(Key);
-        console.log("In dot/3");
-        console.log(this);
         return Prolog.unify(Value, PrologUtilities.jsToProlog(Prolog.get_blob("dict", State).data[key]));
     }
     throw new Error("Oops2");

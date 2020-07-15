@@ -60,7 +60,6 @@ Proactive = {render: function(url, module, container)
                              super(props);
                              this.id = next_id++;
                              this.module = module;
-                             console.log("Allocating id " + this.id);
                              if (Prolog.exists_predicate(Prolog.make_atom(module), Constants.getInitialStateFunctor))
                              {
                                  var State = Prolog.make_variable();
@@ -69,22 +68,103 @@ Proactive = {render: function(url, module, container)
                                                                  [Prolog.make_atom(module), Prolog.make_compound(Constants.getInitialStateFunctor,
                                                                                                                  [Props, State])]);
                                  var checkpoint = Prolog.save_state();
-                                 var rc = Prolog.call({}, Goal);
-                                 Prolog.release_blob("dict", Props);
-                                 if (rc == 1)
-                                 {
-                                     this.state = PrologUtilities.prologToJS(State);
-                                 }
-                                 else
-                                 {
-                                     this.state = {}
-                                 }
-                                 Prolog.restore_state(checkpoint);
+                                 var rc = this.callSynchronously(module, Constants.getInitialStateFunctor, [this.props, State], function(rc)
+                                                                 {
+                                                                     if (rc == 1)
+                                                                     {
+                                                                         this.state = PrologUtilities.prologToJS(State);
+                                                                     }
+                                                                     else
+                                                                     {
+                                                                         this.state = {}
+                                                                     }
+                                                                 });
                              }
                              else
                              {
                                  this.state = {}
                              }
+                         }
+
+                         prepareEnvironment(args, env)
+                         {
+                             for (var i = 0; i < args.length; i++)
+                             {
+                                 if (args[i] == this.props)
+                                 {
+                                     var Props =  Prolog.make_blob("dict", {portray: PrologUtilities.portray_dict, data: this.props});
+                                     env.blobs.push(Props);
+                                     args[i] = Props;
+                                 }
+                                 else if (args[i] == this.state)
+                                 {
+                                     var State = Prolog.make_blob("dict", {portray: PrologUtilities.portray_dict, data: this.state});
+                                     env.blobs.push(State);
+                                     args[i] = State;
+                                 }
+                             }
+                             var This = Prolog.make_blob("widget", this);
+                             env.blobs.push(This);
+                             env._this = This;
+                         }
+
+                         releaseEnvironment(env)
+                         {
+                             for (var i = 0; i < env.blobs.length; i++)
+                             {
+                                 if (Prolog.is_blob(env.blobs[i], "widget"))
+                                     Prolog.release_blob("widget", env.blobs[i]);
+                                 else if (Prolog.is_blob(env.blobs[i], "dict"))
+                                     Prolog.release_blob("dict", env.blobs[i]);
+                                 else
+                                     console.log("Warning: Unexpected blob in environment");
+                             }
+                         }
+
+                         callSynchronously(module, Functor, args, handler)
+                         {
+                             var env = {blobs: []};
+                             var checkpoint = Prolog.save_state();
+                             this.prepareEnvironment(args, env);
+                             var Goal = Prolog.make_compound(Constants.crossModuleCallFunctor,
+                                                             [Prolog.make_atom(module), Prolog.make_compound(Functor, args)]);
+                             var rc = Prolog.call(env, Goal);
+                             var result = handler.call(this, rc);
+                             Prolog.restore_state(checkpoint);
+                             this.releaseEnvironment(env);
+                             return result;
+                         }
+
+                         callAsynchronously(module, Term, extraArgs, handler)
+                         {
+                             var env = {blobs: []};
+                             var checkpoint = Prolog.save_state();
+                             var Functor;
+                             var args = [];
+                             this.prepareEnvironment(extraArgs, env);
+                             if (Prolog.is_atom(Term))
+                             {
+                                 Functor = Prolog.make_functor(Term, extraArgs.length);
+                                 args = extraArgs;
+                             }
+                             else if (Prolog.is_compound(Term))
+                             {
+                                 args = new Array[extraArgs.length + Prolog.term_functor_arity(Term)];
+                                 Functor = Prolog.term_functor(Term);
+                                 var i = 0;
+                                 for (i = 0; i < Prolog.term_functor_arity(Term); i++)
+                                     args[i] = Prolog.term_arg(Term, i);
+                                 for (var j = 0; j < extraArgs.length; j++)
+                                     args[i++] = extraArgs[j];
+                             }
+                             var Goal = Prolog.make_compound(Constants.crossModuleCallFunctor,
+                                                             [Prolog.make_atom(module), Prolog.make_compound(Functor, args)]);
+                             var rc = Prolog.execute(env, Goal, function(success)
+                                                     {
+                                                         handler.call(this, success);
+                                                         Prolog.restore_state(checkpoint);
+                                                         this.releaseEnvironment(env);
+                                                     }.bind(this));
                          }
 
                          make_dict(data)
@@ -94,55 +174,29 @@ Proactive = {render: function(url, module, container)
 
                          render()
                          {
-
-                             console.log("Rendering " + module + " with these props: ");
-                             console.log(this.props);
-                             window.zing = this.props;
-                             console.log(Prolog.portray(Props));
-
-
-                             var This = Prolog.make_blob("widget", this);
                              var Form = Prolog.make_variable();
-                             var State = this.make_dict(this.state);
-                             var Props = this.make_dict(this.props);
-                             var Goal = Prolog.make_compound(Constants.crossModuleCallFunctor,
-                                                             [Prolog.make_atom(module), Prolog.make_compound(Constants.renderFunctor,
-                                                                                                             [State, Props, Form])]);
-                             var env = {_this: This, blobs: []};
-                             var rc = Prolog.call(env, Goal);
-                             // We cannot release This just yet - we may need it when calling nodeToDOM()
-                             Prolog.release_blob("dict", State);
-                             Prolog.release_blob("dict", Props);
-                             if (rc == 4)
-                             {
-                                 Prolog.release_blob("widget", This);
-                                 this.releaseBlobs(env);
-                                 console.log("Exception in render/3:" + Prolog.portray(Prolog.get_exception()));
-                                 return React.createElement('div', null, `Failed to render component`);
-                             }
-                             if (rc == 1)
-                             {
-                                 var dom = this.nodeToDOM(Form);
-                                 Prolog.release_blob("widget", This);
-                                 this.releaseBlobs(env);
-                                 return dom;
-                             }
-                             else if (rc == 2)
-                             {
-                                 console.log("Warning: render/3 was nondet");
-                                 var dom = this.nodeToDOM(Form);
-                                 Prolog.release_blob("widget", This);
-                                 this.releaseBlobs(env);
-                                 return dom;
-                             }
-
-                             else
-                             {
-                                 // failure
-                                 Prolog.release_blob("widget", This);
-                                 this.releaseBlobs(env);
-                                 return React.createElement('div', null, `Failed to render component`);
-                             }
+                             return this.callSynchronously(module, Constants.renderFunctor, [this.state, this.props, Form], function(rc)
+                                                           {
+                                                               if (rc == 4)
+                                                               {
+                                                                   console.log("Exception in render/3:" + Prolog.portray(Prolog.get_exception()));
+                                                                   return React.createElement('div', null, `Failed to render component`);
+                                                               }
+                                                               if (rc == 1)
+                                                               {
+                                                                   return this.nodeToDOM(Form);
+                                                               }
+                                                               else if (rc == 2)
+                                                               {
+                                                                   console.log("Warning: render/3 was nondet");
+                                                                   return this.nodeToDOM(Form);
+                                                               }
+                                                               else
+                                                               {
+                                                                   // failure
+                                                                   return React.createElement('div', null, `Failed to render component`);
+                                                               }
+                                                           });
                          }
 
                          releaseBlobs(env)
@@ -175,8 +229,6 @@ Proactive = {render: function(url, module, container)
                                  {
                                      // This is a Prolog-defined Proactive class
                                      var attributes = this.attributesToJS(Prolog.term_arg(Term, 1), true);
-                                     console.log("Found these attributes for " + module);
-                                     console.log(attributes);
                                      return React.createElement(classes[tag], attributes, children);
                                  }
                                  else if (ReactBootstrap[tag] !== undefined)
@@ -195,7 +247,6 @@ Proactive = {render: function(url, module, container)
                              }
                              else if (Prolog.is_constant(Term))
                              {
-                                 console.log("Here: " + Prolog.portray(Term));
                                  return Prolog.portray(Term);
                              }
                              else
@@ -207,7 +258,6 @@ Proactive = {render: function(url, module, container)
 
                          attributesToJS(Term, pure)
                          {
-                             console.log("Attributes: " + Prolog.portray(Term));
                              var map = {};
                              while (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.listFunctor)
                              {
@@ -245,7 +295,6 @@ Proactive = {render: function(url, module, container)
                              }
                              if (Term != Constants.emptyListAtom)
                                  console.log("Bad list in attributesToJS");
-                             console.log(map);
                              return map;
                          }
 
@@ -254,41 +303,26 @@ Proactive = {render: function(url, module, container)
                              // FIXME: These Handler terms are never cleaned up
                              // FIXME: Also, if we have a $this term then we need to take some measures right away!
                              var target = this;
-                             console.log("Making handler from: " + Term + " = " + Prolog.portray(Term)) ;
                              while (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.thisFunctor)
                              {
                                  var Blob = Prolog.term_arg(Term, 0);
-                                 console.log("Blob: " + Prolog.portray(Blob));
                                  target = Prolog.get_blob("widget", Blob);
                                  Term = Prolog.term_arg(Term, 1);
                              }
                              var handler = PrologUtilities.prologToJS(Term);
                              return function(e)
                              {
-                                 var NewState = Prolog.make_variable();
                                  var PrologEvent = Prolog.make_variable(); // FIXME: Put a representation of e in here
-                                 var State = this.make_dict(this.state);
-                                 var Props = this.make_dict(this.props);
+                                 var NewState = Prolog.make_variable();
                                  var Handler = PrologUtilities.jsToProlog(handler);
-                                 var Goal = Prolog.make_compound(Constants.crossModuleCallFunctor,
-                                                                 [Prolog.make_atom(target.module), Prolog.make_compound(Handler,
-                                                                                                                        [PrologEvent, State, Props, NewState])]);
-                                 var checkpoint = Prolog.save_state();
-                                 Prolog.execute({},
-                                                Goal,
-                                                function(success)
-                                                {
-                                                    Prolog.release_blob("dict", State);
-                                                    Prolog.release_blob("dict", Props);
-                                                    if (success)
-                                                    {
-                                                        var newState = PrologUtilities.prologToJS(NewState);
-                                                        Prolog.restore_state(checkpoint);
-                                                        target.setState(newState);
-                                                    }
-                                                    else
-                                                        Prolog.restore_state(checkpoint);
-                                                });
+                                 this.callAsynchronously(target.module, Handler, [PrologEvent, this.state, this.props, NewState], function(success)
+                                                         {
+                                                             if (success)
+                                                             {
+                                                                 var newState = PrologUtilities.prologToJS(NewState);
+                                                                 target.setState(newState);
+                                                             }
+                                                         });
                              }.bind(this);
                          }
 
