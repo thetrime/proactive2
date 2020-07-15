@@ -62,9 +62,14 @@ function listToJS(Term)
 
 function prologToJS(Term)
 {
+    Term = Prolog.deref(Term);
     if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.curlyFunctor)
     {
         return dictEntriesToJS(Prolog.term_arg(Term, 0));
+    }
+    if (Term == Constants.emptyCurlyAtom)
+    {
+        return {};
     }
     else if (Prolog.is_atom(Term))
     {

@@ -63,7 +63,7 @@ Proactive = {render: function(url, module, container)
                                                                  {
                                                                      if (rc == 1)
                                                                      {
-                                                                         this.state = PrologUtilities.prologToJS(State);
+                                                                         this.state = PrologUtilities.prologToJS(Prolog.deref(State));
                                                                      }
                                                                      else
                                                                      {
@@ -172,7 +172,7 @@ Proactive = {render: function(url, module, container)
                                                                switch(rc)
                                                                {
                                                                    case  2: console.log("Warning: render/3 was nondet"); /* Fall through */
-                                                                   case  1: return this.nodeToDOM(Form);
+                                                                   case  1: return this.nodeToDOM(Prolog.deref(Form));
                                                                    case  4: console.log("Exception in render/3:" + Prolog.portray(Prolog.get_exception())); /* Fall through */
                                                                    default: return React.createElement('div', null, `Failed to render component`);
                                                                }
@@ -294,7 +294,7 @@ Proactive = {render: function(url, module, container)
                                                          {
                                                              if (success)
                                                              {
-                                                                 var newState = PrologUtilities.prologToJS(NewState);
+                                                                 var newState = PrologUtilities.prologToJS(Prolog.deref(NewState));
                                                                  target.setState(newState);
                                                              }
                                                          });
