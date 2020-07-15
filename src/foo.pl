@@ -5,7 +5,6 @@
 requires('bar').
 
 render(State, _Props, Form):-
-
 %        findall(Widget,
 %                ( between(1, 5000, I),
 %                  {|jsx(Widget)||<div>This is widget {I} of 5000</div>|}
@@ -14,7 +13,8 @@ render(State, _Props, Form):-
         {|jsx(Form)||
         <div style={width: '200px', height: '200px', background: 'red'}>
           This is a test: {State.counter}
-          <bar cat="zin" cog={Unbound} islay="chonk"/>
+          <bar cat="zin" cog={Unbound} islay="chonk" test={splunge}/>
+          <bar dinner="biscuits" test={this.splunge}/>
           <Button onClick={someEvent}>Click me!</Button>
 
         </div>|}.
@@ -29,3 +29,6 @@ someEvent(_Event, State, _Props, {counter: NewCounter}):-
         writeln(Xs),
         NewCounter is State.counter + 1.
 
+
+splunge(_Event, _State, _Props, {}):-
+        writeln(foo).
