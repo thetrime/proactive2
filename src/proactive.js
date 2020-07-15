@@ -28,8 +28,11 @@ Proactive = {render: function(url, module, container)
                  Prolog.define_foreign("get_this", require('./get_this'));
                  Prolog.consult_url(url + "/component/" + module, function()
                                     {
+                                        var checkpoint = Prolog.save_state();
                                         var Components = Prolog.make_variable();
                                         var Goal = Prolog.make_compound(Prolog.make_functor(Prolog.make_atom("get_components"), 1), [Components]);
+                                        // Note that we cannot us callSynchronously() here because that is a method of React.Component, and we are just in Proactive here
+                                        // Fortunately, we dont need to clean much up - get_components/1 does not create any blobs
                                         var rc = Prolog.call({}, Goal);
                                         if (rc == 1)
                                         {
@@ -48,6 +51,7 @@ Proactive = {render: function(url, module, container)
                                         }
                                         else
                                             console.log("Failed to get components: " + rc);
+                                        Prolog.restore_state(checkpoint);
 
                                     });
 
@@ -63,11 +67,6 @@ Proactive = {render: function(url, module, container)
                              if (Prolog.exists_predicate(Prolog.make_atom(module), Constants.getInitialStateFunctor))
                              {
                                  var State = Prolog.make_variable();
-                                 var Props = this.make_dict(this.props);
-                                 var Goal = Prolog.make_compound(Constants.crossModuleCallFunctor,
-                                                                 [Prolog.make_atom(module), Prolog.make_compound(Constants.getInitialStateFunctor,
-                                                                                                                 [Props, State])]);
-                                 var checkpoint = Prolog.save_state();
                                  var rc = this.callSynchronously(module, Constants.getInitialStateFunctor, [this.props, State], function(rc)
                                                                  {
                                                                      if (rc == 1)
@@ -137,6 +136,7 @@ Proactive = {render: function(url, module, container)
 
                          callAsynchronously(module, Term, extraArgs, handler)
                          {
+                             // Note that the second arg here is a Prolog term. This means you can callAsynchronously(foo(bar), [baz]) to get foo(bar, baz)
                              var env = {blobs: []};
                              var checkpoint = Prolog.save_state();
                              var Functor;
@@ -197,12 +197,6 @@ Proactive = {render: function(url, module, container)
                                                                    return React.createElement('div', null, `Failed to render component`);
                                                                }
                                                            });
-                         }
-
-                         releaseBlobs(env)
-                         {
-                             for (var i = 0; i < env.blobs; i++)
-                                 Prolog.release_blob("widget", env.blobs[i]);
                          }
 
                          listToDOM(List)
@@ -325,8 +319,6 @@ Proactive = {render: function(url, module, container)
                                                          });
                              }.bind(this);
                          }
-
                      }
                  };
-
              }};
