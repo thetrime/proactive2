@@ -18,6 +18,7 @@ Proactive = {render: function(url, module, container)
                  Prolog.define_foreign("get_this", require('./get_this'));
                  Prolog.define_foreign("media_size", require('./media_size'));
                  Prolog.define_foreign("get_ticks", require('./get_ticks'));
+                 Prolog.define_foreign("bubble_event", require('./bubble_event'));
                  Prolog.consult_url(url + "component/" + module, function()
                                     {
                                         var checkpoint = Prolog.save_state();
@@ -129,8 +130,12 @@ Proactive = {render: function(url, module, container)
                          callAsynchronously(module, Term, extraArgs, handler)
                          {
                              // Note that the second arg here is a Prolog term. This means you can callAsynchronously(foo(bar), [baz]) to get foo(bar, baz)
+                             // Also note that it is not safe for callAsynchronously() to push and pop the machine state because of the way the callback may be called
+                             // For example, suppose that your callAsynchronously() call ends up invoking a second one. We push state 1, then state 2.
+                             // The callbacks are run in reverse order, though - outermost first - so we (try to) pop state 1 first, leading to memory corruption
+                             // This means that you must save the state at the very first call to callAsynchronously() yourself, and subsequent calls should
+                             // just be treated as a single long invocation, without saving any states.
                              var env = {blobs: []};
-                             var checkpoint = Prolog.save_state();
                              var Functor;
                              var args = [];
                              this.prepareEnvironment(extraArgs, env);
@@ -154,7 +159,6 @@ Proactive = {render: function(url, module, container)
                              var rc = Prolog.execute(env, Goal, function(success)
                                                      {
                                                          handler.call(this, success);
-                                                         Prolog.restore_state(checkpoint);
                                                          this.releaseEnvironment(env);
                                                      }.bind(this));
                          }
@@ -290,6 +294,7 @@ Proactive = {render: function(url, module, container)
                                  var PrologEvent = PrologUtilities.make_event(e);
                                  var NewState = Prolog.make_variable();
                                  var Handler = PrologUtilities.jsToProlog(handler);
+                                 var checkpoint = Prolog.save_state();
                                  this.callAsynchronously(target.module, Handler, [PrologEvent, this.state, this.props, NewState], function(success)
                                                          {
                                                              if (success)
@@ -297,6 +302,7 @@ Proactive = {render: function(url, module, container)
                                                                  var newState = PrologUtilities.prologToJS(Prolog.deref(NewState));
                                                                  target.setState(newState);
                                                              }
+                                                             Prolog.restore_state(checkpoint);
                                                          });
                              }.bind(this);
                          }

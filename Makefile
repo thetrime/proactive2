@@ -13,7 +13,7 @@ node_modules/browserify:
 proscript2/proscript.js:
 	make -C proscript2
 
-proactive-${VERSION}/lib/proactive.js:	src/proactive.js src/on_server.js src/constants.js src/dot.js src/get_this.js src/prolog_utilities.js node_modules/uglify-js node_modules/browserify proscript2/proscript.js
+proactive-${VERSION}/lib/proactive.js:	src/proactive.js src/on_server.js src/constants.js src/dot.js src/get_this.js src/bubble_event.js src/prolog_utilities.js node_modules/uglify-js node_modules/browserify proscript2/proscript.js
 # We have to disable warnings here because emscripten generates output containing a HUGE amount of unused vars and functions
 # and uglify produces pages and pages of warnings about them if we dont stop it
 	mkdir -p proactive-${VERSION}/lib

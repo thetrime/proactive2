@@ -5,6 +5,7 @@
 requires('bar').
 
 render(State, _Props, Form):-
+        writeln(hello_from_foo(State)),
 %        findall(Widget,
 %                ( between(1, 5000, I),
 %                  {|jsx(Widget)||<div>This is widget {I} of 5000</div>|}
@@ -32,9 +33,10 @@ someEvent(_Event, State, _Props, {counter: NewCounter}):-
         NewCounter is State.counter + 1.
 
 
-splunge(_Event, _State, _Props, {}):-
-        writeln(foo).
+splunge(_Event, _State, _Props, {islay: squashed}):-
+        on_server(writeln(foo)).
 
 ftang(Event, _State, _Props, {input_data: Value}):-
-        writeln(Event),
+        writeln(got_event(Event)),
         memberchk(value=Value, Event).
+
