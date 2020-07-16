@@ -1,12 +1,4 @@
 otherwise.
-
-between(Low, High, I):-
-        High >= Low,
-        ( I = Low
-        ; II is Low+1,
-          between(II, High, I)
-        ).
-
 string(_):- fail.
 
 
