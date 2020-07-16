@@ -6,14 +6,16 @@ requires('bar').
 
 render(State, _Props, Form):-
         writeln(hello_from_foo(State)),
-%        findall(Widget,
-%                ( between(1, 5000, I),
-%                  {|jsx(Widget)||<div>This is widget {I} of 5000</div>|}
-%                ),
-%                Widgets),
+        Max = 20000,
+        findall(Widget,
+                ( between(1, Max, I),
+                  {|jsx(Widget)||<span>This is widget {I} of {Max}</span>|}
+                ),
+                Widgets),
         {|jsx(Form)||
         <div style={width: '200px', height: '200px', background: 'red'}>
           This is a test: {State.counter}
+          {Widgets}
           <bar cat="zin" cog={Unbound} islay="chonk" test={splunge}/>
           <bar dinner="biscuits" test={this.splunge}/>
           <input value={State.input_data} onChange={this.ftang}/>

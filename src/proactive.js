@@ -184,18 +184,19 @@ Proactive = {render: function(url, module, container)
                                                            });
                          }
 
-                         listToDOM(List)
+                         listToDOM(List, dom)
                          {
-                             var dom = [];
                              while (Prolog.is_compound(List) && Prolog.term_functor(List) == Constants.listFunctor)
                              {
                                  var Head = Prolog.term_arg(List, 0);
-                                 dom.push(this.nodeToDOM(Head));
+                                 if (Prolog.is_compound(Head) && Prolog.term_functor(Head) == Constants.listFunctor)
+                                     this.listToDOM(Head, dom);
+                                 else
+                                     dom.push(this.nodeToDOM(Head));
                                  List = Prolog.term_arg(List, 1);
                              }
                              if (List != Constants.emptyListAtom)
                                  console.log("Bad list in listToDOM");
-                             return dom;
                          }
 
                          nodeToDOM(Term)
@@ -203,7 +204,8 @@ Proactive = {render: function(url, module, container)
                              if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.elementFunctor)
                              {
                                  var tag = Prolog.atom_chars(Prolog.term_arg(Term, 0));
-                                 var children = this.listToDOM(Prolog.term_arg(Term, 2));
+                                 var children = [];
+                                 this.listToDOM(Prolog.term_arg(Term, 2), children);
                                  if (classes[tag] !== undefined)
                                  {
                                      // This is a Prolog-defined Proactive class
