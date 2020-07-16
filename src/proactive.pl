@@ -292,4 +292,5 @@ do_load_react_module(X):-
 :-meta_predicate(user:on_server(0)).
 user:on_server(Goal):- Goal.
 user:get_this(fixme).
-
+user:bubble_event(_, Event):-
+        permission_error(handle, event, Event).
