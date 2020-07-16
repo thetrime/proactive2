@@ -3,6 +3,7 @@
 
 
 :-http_handler(proactive(goal), execute_proactive, []).
+:-http_handler(proactive('boilerplate.pl'), http_reply_file('src/boilerplate.pl', []), []).
 :-http_handler(proactive(form/FormId), serve_proactive_form(FormId), [prefix]).
 :-http_handler(proactive(component/FormId), serve_component(FormId), []).
 
