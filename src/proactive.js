@@ -12,42 +12,65 @@ Proactive = {render: function(url, module, container)
                  console.log("Welcome to Proactive 2.0");
                  var Constants = require('./constants');
                  var PrologUtilities = require('./prolog_utilities');
+                 var MessageService = require('./message_service');
                  classes = {};
-                 Prolog.define_foreign(".", require('./dot'));
-                 Prolog.define_foreign("on_server", require('./on_server')(url));
-                 Prolog.define_foreign("get_this", require('./get_this'));
-                 Prolog.define_foreign("media_size", require('./media_size'));
-                 Prolog.define_foreign("get_ticks", require('./get_ticks'));
-                 Prolog.define_foreign("bubble_event", require('./bubble_event'));
-                 Prolog.consult_url(url + "boilerplate.pl", function() {});
-                 Prolog.consult_url(url + "component/" + module, function()
-                                    {
-                                        var checkpoint = Prolog.save_state();
-                                        var Components = Prolog.make_variable();
-                                        var Goal = Prolog.make_compound(Prolog.make_functor(Prolog.make_atom("get_components"), 1), [Components]);
-                                        // Note that we cannot us callSynchronously() here because that is a method of React.Component, and we are just in Proactive here
-                                        // Fortunately, we dont need to clean much up - get_components/1 does not create any blobs
-                                        var rc = Prolog.call({}, Goal);
-                                        if (rc == 1)
-                                        {
-                                            Prolog.forEach(Components,
-                                                           function(Module)
-                                                           {
-                                                               this.classes[Prolog.atom_chars(Module)] = defineProactiveComponent(Prolog.atom_chars(Module));
-                                                           },
-                                                           function() {}
-                                                          );
-                                            ReactDOM.render(React.createElement(classes[module], null, []), container);
-                                        }
-                                        else if (rc == 4)
-                                        {
-                                            console.log("Exception getting components:" + Prolog.portray(Prolog.get_exception()));
-                                        }
-                                        else
-                                            console.log("Failed to get components: " + rc);
-                                        Prolog.restore_state(checkpoint);
 
-                                    });
+                 function make()
+                 {
+                     Prolog.hard_reset();
+                     Prolog.define_foreign(".", require('./dot'));
+                     Prolog.define_foreign("on_server", require('./on_server')(url));
+                     Prolog.define_foreign("get_this", require('./get_this'));
+                     Prolog.define_foreign("media_size", require('./media_size'));
+                     Prolog.define_foreign("get_ticks", require('./get_ticks'));
+                     Prolog.define_foreign("bubble_event", require('./bubble_event'));
+                     Prolog.consult_url(url + "boilerplate.pl", function() {});
+                     Prolog.consult_url(url + "component/" + module, function()
+                                        {
+                                            var checkpoint = Prolog.save_state();
+                                            var Components = Prolog.make_variable();
+                                            var Goal = Prolog.make_compound(Prolog.make_functor(Prolog.make_atom("get_components"), 1), [Components]);
+                                            // Note that we cannot us callSynchronously() here because that is a method of React.Component, and we are just in Proactive here
+                                            // Fortunately, we dont need to clean much up - get_components/1 does not create any blobs
+                                            var rc = Prolog.call({}, Goal);
+                                            var newClasses = {};
+                                            if (rc == 1)
+                                            {
+                                                Prolog.forEach(Components,
+                                                               function(Module)
+                                                               {
+                                                                   if (this.classes[Prolog.atom_chars(Module)] == undefined)
+                                                                       newClasses[Prolog.atom_chars(Module)] = defineProactiveComponent(Prolog.atom_chars(Module));
+                                                                   else
+                                                                       newClasses[Prolog.atom_chars(Module)] = this.classes[Prolog.atom_chars(Module)];
+                                                               },
+                                                               function() {}
+                                                              );
+                                                this.classes = newClasses;
+                                                ReactDOM.render(React.createElement(classes[module], null, []), container);
+                                            }
+                                            else if (rc == 4)
+                                            {
+                                                console.log("Exception getting components:" + Prolog.portray(Prolog.get_exception()));
+                                            }
+                                            else
+                                                console.log("Failed to get components: " + rc);
+                                            Prolog.restore_state(checkpoint);
+
+                                        });
+                 }
+                 make();
+                 MessageService.connect(url, module, function(Message)
+                                        {
+                                            if (Prolog.is_compound(Message) && Prolog.term_functor(Message) == Constants.systemFunctor)
+                                            {
+                                                var SystemMessage = Prolog.term_arg(Message, 0);
+                                                if (Prolog.is_compound(SystemMessage) && Prolog.term_functor(SystemMessage) == Constants.consultedFunctor)
+                                                {
+                                                    make();
+                                                }
+                                            }
+                                        });
 
                  function defineProactiveComponent(module)
                  {

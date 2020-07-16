@@ -1,11 +1,13 @@
 :-module(proactive,
-         []).
+         [trigger_proactive_recompile/1]).
 
 
 :-http_handler(proactive(goal), execute_proactive, []).
+:-http_handler(proactive(listen), listen_proactive, []).
 :-http_handler(proactive('boilerplate.pl'), http_reply_file('src/boilerplate.pl', []), []).
 :-http_handler(proactive(form/FormId), serve_proactive_form(FormId), [prefix]).
 :-http_handler(proactive(component/FormId), serve_component(FormId), []).
+
 
 user:term_expansion(:-serve_lib, :-http_handler(root('lib/'), http_reply_from_files(Location, []), [prefix])):-
         setup_call_cleanup(open('VERSION', read, S),
@@ -23,6 +25,102 @@ execute_proactive(Request):-
         ; SessionID = {null}
         ),
         http_upgrade_to_websocket(execute_proactive_ws_guarded(SessionID, Request), [], Request).
+
+listen_proactive(Request):-
+        ( http_in_session(SessionID)->
+            true
+        ; SessionID = {null}
+        ),
+        http_upgrade_to_websocket(listen_proactive_loop(SessionID), [], Request).
+
+
+:-multifile(open_proactive_session_hook/1).
+:-multifile(close_proactive_session_hook/1).
+:-dynamic(proactive_listener/2).
+
+open_proactive_session(Self, RootComponent):-
+        forall(open_proactive_session_hook(Self), true),
+        ( setof(RelatedModule,
+                related_react_module(RootComponent, RelatedModule),
+                Modules)->
+            true
+        ; Modules = []
+        ),
+        assert(proactive_listener(Self, Modules)).
+
+close_proactive_session(Self):-
+        retractall(proactive_listener(Self, _)),
+        forall(close_proactive_session_hook(Self), true).
+
+:-multifile(proactive_message_hook/1).
+
+listen_proactive_loop(SessionID, Websocket):-
+        ( SessionID == {null}->
+            true
+        ; b_setval(http_session_id, SessionID)
+        ),
+        thread_self(Self),
+        ws_receive(Websocket, Message),
+        ( Message.opcode == text->
+            Data = Message.data,
+            read_term_from_atom(Data, RootComponent, []),
+            thread_create(ws_listen_worker(Websocket, Self), Worker, [detached(false)]),
+            setup_call_cleanup(open_proactive_session(Self, RootComponent),
+                               listen_proactive_loop_1(Websocket, Worker),
+                               close_proactive_session(Self))
+        ; otherwise->
+            true
+        ).
+
+listen_proactive_loop_1(Websocket, Worker):-
+        thread_get_message(Message),
+        ( Message == close->
+            thread_join(Worker, _),
+            ws_close(Websocket, 1000, goodbye),
+            throw(terminated)
+        ; Message == ping ->
+            ws_send(Websocket, text(pong))
+        ; Message = consulted(_)->
+            format(atom(Text), 'system(~k)', [Message]),
+            ws_send(Websocket, text(Text))
+        ; Message = system(_)->
+            format(atom(Text), '~k', [Message]),
+            ws_send(Websocket, text(Text))
+        ; format(user_error, 'Bad proactive message: ~q~n', [Message])
+        ),
+        !,
+        listen_proactive_loop_1(Websocket, Worker).
+
+ws_listen_worker(Websocket, Owner):-
+        ws_receive(Websocket, Message),
+        ( Message.opcode == close->
+            thread_send_message(Owner, close)
+        ; Message.opcode == text->
+            Data = Message.data,
+            read_term_from_atom(Data, Term, []),
+            ( Term = message(T)->
+                ( catch(proactive_message_hook(T),
+                        Exception,
+                        format(user_error, 'Exception handling Proactive message ~q: ~p~n', [T, Exception]))->
+                    true
+                ; format(user_error, 'Failure handling Proactive message ~q~n', [T])
+                )
+            ; Term == ping ->
+                thread_send_message(Owner, ping)
+            ; format(user_error, 'Unexpected message from client: ~q~n', [Term])
+            ),
+            ws_listen_worker(Websocket, Owner)
+        ; otherwise->
+            ws_listen_worker(Websocket, Owner)
+        ).
+
+trigger_proactive_recompile(Module):-
+        forall(proactive_listener(Queue, Modules),
+               ( member(Module, Modules)->
+                   thread_send_message(Queue, consulted(Module))
+               ; true
+               )).
+
 
 :-multifile(proactive:goal_is_safe/1).
 

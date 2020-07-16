@@ -6,7 +6,7 @@ requires('bar').
 
 render(State, _Props, Form):-
         writeln(hello_from_foo(State)),
-        Max = 20000,
+        Max = 5,
         findall(Widget,
                 ( between(1, Max, I),
                   {|jsx(Widget)||<span>This is widget {I} of {Max}</span>|}

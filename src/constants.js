@@ -18,4 +18,7 @@ module.exports = {getInitialStateFunctor: Prolog.make_functor(Prolog.make_atom("
                   exceptionFunctor : Prolog.make_functor(Prolog.make_atom("exception"), 1),
                   thisFunctor : Prolog.make_functor(Prolog.make_atom("$this"), 2),
                   failAtom: Prolog.make_atom("fail"),
-                  abortedAtom: Prolog.make_atom("$aborted")};
+                  abortedAtom: Prolog.make_atom("$aborted"),
+                  systemFunctor: Prolog.make_functor(Prolog.make_atom("system"), 1),
+                  consultedFunctor: Prolog.make_functor(Prolog.make_atom("consulted"), 1)};
+
