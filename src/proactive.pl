@@ -3,6 +3,13 @@
           broadcast_proactive_message/2]).
 
 
+:- use_module(library(http/http_files)).
+:- use_module(library(http/http_path)).
+:- use_module(library(http/websocket)).
+:- use_module(library(http/http_session)).
+:- use_module(src/jsx).
+
+
 :-http_handler(proactive(goal), execute_proactive, []).
 :-http_handler(proactive(listen), listen_proactive, [spawn([])]).
 :-http_handler(proactive('boilerplate.pl'), http_reply_file('src/boilerplate.pl', []), []).
@@ -135,9 +142,9 @@ ws_listen_worker(Websocket, Owner):-
                 ; format(user_error, 'Failure handling Proactive message ~q~n', [T])
                 )
             ; Term = register_for(Class, Discriminator, Key)->
-                ??assert(proactive_message_listener(Class, Discriminator, Key, Owner))
+                assert(proactive_message_listener(Class, Discriminator, Key, Owner))
             ; Term = deregister(Key)->
-                ??retractall(proactive_message_listener(_, _, Key, Owner))
+                retractall(proactive_message_listener(_, _, Key, Owner))
             ; Term == ping ->
                 thread_send_message(Owner, ping)
             ; format(user_error, 'Unexpected message from client: ~q~n', [Term])

@@ -44,7 +44,7 @@ ftang(Event, _State, _Props, {input_data: Value}):-
         memberchk(value=Value, Event).
 
 
-onMessage(Event, State, Props, {input_data: Data}):-
+onMessage(Event, _State, _Props, {input_data: Data}):-
         writeln(message_received(Event)),
         ??memberchk(baz=Data, Event).
 

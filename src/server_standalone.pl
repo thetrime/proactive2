@@ -1,12 +1,8 @@
+:- include(src/testing).
+:- use_module(proactive).
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
-:- use_module(library(http/http_files)).
-:- use_module(library(http/http_path)).
-:- use_module(library(http/websocket)).
-:- use_module(library(http/http_session)).
 :- use_module(src/jsx).
-:- include(src/testing).
-:-use_module(proactive).
 
 http:location(proactive, root(proactive), []).
 
