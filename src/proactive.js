@@ -7,6 +7,10 @@ function isEventHandler(e)
     return e.startsWith("on");
 }
 
+var pendingEvents = [];
+var currentlyProcessingEvents = false;
+
+
 Proactive = {render: function(url, module, container)
              {
                  console.log("Welcome to Proactive 2.0");
@@ -14,7 +18,7 @@ Proactive = {render: function(url, module, container)
                  var PrologUtilities = require('./prolog_utilities');
                  var MessageService = require('./message_service');
                  classes = {};
-
+                 specials = {'MessageListener': require('./message_listener')(MessageService)};
                  function make()
                  {
                      Prolog.hard_reset();
@@ -60,15 +64,11 @@ Proactive = {render: function(url, module, container)
                                         });
                  }
                  make();
-                 MessageService.connect(url, module, function(Message)
+                 MessageService.connect(url, module, function(SystemMessage)
                                         {
-                                            if (Prolog.is_compound(Message) && Prolog.term_functor(Message) == Constants.systemFunctor)
+                                            if (Prolog.is_compound(SystemMessage) && Prolog.term_functor(SystemMessage) == Constants.consultedFunctor)
                                             {
-                                                var SystemMessage = Prolog.term_arg(Message, 0);
-                                                if (Prolog.is_compound(SystemMessage) && Prolog.term_functor(SystemMessage) == Constants.consultedFunctor)
-                                                {
-                                                    make();
-                                                }
+                                                make();
                                             }
                                         });
 
@@ -229,6 +229,10 @@ Proactive = {render: function(url, module, container)
                                  var tag = Prolog.atom_chars(Prolog.term_arg(Term, 0));
                                  var children = [];
                                  this.listToDOM(Prolog.term_arg(Term, 2), children);
+                                 if (specials[tag] !== undefined)
+                                 {
+                                     return React.createElement(specials[tag], specials[tag].attributesToJS(module, Prolog.term_arg(Term, 1)));
+                                 }
                                  if (classes[tag] !== undefined)
                                  {
                                      // This is a Prolog-defined Proactive class
@@ -250,7 +254,6 @@ Proactive = {render: function(url, module, container)
                                      else
                                          return React.createElement(tag, attributes, children);
                                  }
-
                              }
                              else if (Prolog.is_constant(Term))
                              {
@@ -305,6 +308,39 @@ Proactive = {render: function(url, module, container)
                              return map;
                          }
 
+                         processEvent(handler, event)
+                         {
+                             pendingEvents.push({handler: handler,
+                                                 event: event});
+                             if (!currentlyProcessingEvents)
+                                 this.dispatchAnEvent();
+                             else
+                                 console.log("Already processing an event");
+                         }
+
+                         dispatchAnEvent()
+                         {
+                             currentlyProcessingEvents = true;
+                             var event = pendingEvents.shift();
+                             var checkpoint = Prolog.save_state();
+                             var NewState = Prolog.make_variable();
+                             var Handler = PrologUtilities.jsToProlog(event.handler);
+                             var Event = PrologUtilities.jsToProlog(event.event);
+                             this.callAsynchronously(this.module, Handler, [Event, this.state, this.props, NewState], function(success)
+                                                         {
+                                                             if (success)
+                                                             {
+                                                                 var newState = PrologUtilities.prologToJS(Prolog.deref(NewState));
+                                                                 this.setState(newState);
+                                                             }
+                                                             Prolog.restore_state(checkpoint);
+                                                             if (pendingEvents.length == 0)
+                                                                 currentlyProcessingEvents = false;
+                                                             else
+                                                                 dispatchAnEvent();
+                                                         });
+                         }
+
                          makeEventHandler(Term)
                          {
                              var target = this;
@@ -317,19 +353,7 @@ Proactive = {render: function(url, module, container)
                              var handler = PrologUtilities.prologToJS(Term);
                              return function(e)
                              {
-                                 var PrologEvent = PrologUtilities.make_event(e);
-                                 var NewState = Prolog.make_variable();
-                                 var Handler = PrologUtilities.jsToProlog(handler);
-                                 var checkpoint = Prolog.save_state();
-                                 this.callAsynchronously(target.module, Handler, [PrologEvent, this.state, this.props, NewState], function(success)
-                                                         {
-                                                             if (success)
-                                                             {
-                                                                 var newState = PrologUtilities.prologToJS(Prolog.deref(NewState));
-                                                                 target.setState(newState);
-                                                             }
-                                                             Prolog.restore_state(checkpoint);
-                                                         });
+                                 this.processEvent(handler, PrologUtilities.make_event(e));
                              }.bind(this);
                          }
                      }

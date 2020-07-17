@@ -10,7 +10,12 @@ function jsToProlog(js)
     else if (js.integer !== undefined)
         return Prolog.make_integer(js.integer);
     else if (js.compound !== undefined)
-        return Prolog.make_compound(Prolog.make_functor(Prolog.make_atom(js.compound.name), js.compound.args.length), jsListToPrologArgs(js.compound.args));
+    {
+        var args = [];
+        for (var i = 0; i < js.compound.args.length; i++)
+            args.push(jsToProlog(js.compound.args[i]));
+        return Prolog.make_compound(Prolog.make_functor(Prolog.make_atom(js.compound.name), js.compound.args.length), args);
+    }
     else if (js.widget !== undefined)
     {
         var Blob = Prolog.make_blob("widget", js.widget);
@@ -18,26 +23,17 @@ function jsToProlog(js)
             this.blobs.push(Blob);
         return Blob;
     }
+    else if (js.list !== undefined)
+    {
+        var List = Constants.emptyListAtom;
+        for (var i = 0; i < js.list.length; i++)
+            List = Prolog.make_compound(Constants.listFunctor, [jsToProlog(js.list[i]), List]);
+        return List;
+    }
     else
     {
         return Prolog.make_atom("<unknown>");
     }
-};
-
-function jsListToPrologArgs(js)
-{
-    var list = [];
-    for (var i = 0; i < js.length; i++)
-        list.push(jsToProlog(js[i]));
-    return list;
-};
-
-function jsListToProlog(js)
-{
-    var result = Constants.emptyListAtom;
-    for (var i = 0; i < js.length; i++)
-        result = Prolog.make_compound(Constants.listFunctor, [jsToProlog(js[i]), result]);
-    return result;
 };
 
 function Null()
@@ -49,7 +45,7 @@ function listToJS(Term)
 {
     var list = [];
     var Tail = Term;
-    while (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.listFunctor)
+    while (Prolog.is_compound(Tail) && Prolog.term_functor(Tail) == Constants.listFunctor)
     {
         list.push(prologToJS(Prolog.term_arg(Tail, 0)));
         Tail = Prolog.term_arg(Tail, 1);
@@ -147,6 +143,6 @@ module.exports = {jsToProlog: jsToProlog,
                   },
                   make_event: function(e)
                   {
-                      return jsListToProlog([{compound: {name: "=", args: [{atom: "value"}, {atom: e.target.value}]}}]);
+                      return {list: {compound: {name: "=", args: [{atom: "value"}, {atom: e.target.value}]}}};
                   }
                  };

@@ -19,6 +19,7 @@ render(State, _Props, Form):-
           <bar cat="zin" cog={Unbound} islay="chonk" test={splunge}/>
           <bar dinner="biscuits" test={this.splunge}/>
           <input value={State.input_data} onChange={this.ftang}/>
+          <MessageListener class="test_message" discriminator={my_discriminator} onMessage={this.onMessage}/>
           <Button onClick={someEvent}>Click me!</Button>
         </div>|},
         writeln(state=State.input_data).
@@ -42,3 +43,10 @@ ftang(Event, _State, _Props, {input_data: Value}):-
         writeln(got_event(Event)),
         memberchk(value=Value, Event).
 
+
+onMessage(Event, State, Props, {input_data: Data}):-
+        writeln(message_received(Event)),
+        ??memberchk(baz=Data, Event).
+
+my_discriminator(Message):-
+        on_server(??memberchk(foo=bar, Message)).

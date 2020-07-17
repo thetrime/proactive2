@@ -1,9 +1,10 @@
 :-module(proactive,
-         [trigger_proactive_recompile/1]).
+         [trigger_proactive_recompile/1,
+          broadcast_proactive_message/2]).
 
 
 :-http_handler(proactive(goal), execute_proactive, []).
-:-http_handler(proactive(listen), listen_proactive, []).
+:-http_handler(proactive(listen), listen_proactive, [spawn([])]).
 :-http_handler(proactive('boilerplate.pl'), http_reply_file('src/boilerplate.pl', []), []).
 :-http_handler(proactive(form/FormId), serve_proactive_form(FormId), [prefix]).
 :-http_handler(proactive(component/FormId), serve_component(FormId), []).
@@ -76,10 +77,14 @@ listen_proactive_loop_1(Websocket, Worker):-
         thread_get_message(Message),
         ( Message == close->
             thread_join(Worker, _),
+            destroy_listeners,
             ws_close(Websocket, 1000, goodbye),
             throw(terminated)
         ; Message == ping ->
             ws_send(Websocket, text(pong))
+        ; Message = message(Class, Term)->
+            forall(should_handle_message(Class, Term, Key),
+                   dispatch_user_message(Websocket, Term, Key))
         ; Message = consulted(_)->
             format(atom(Text), 'system(~k)', [Message]),
             ws_send(Websocket, text(Text))
@@ -90,6 +95,30 @@ listen_proactive_loop_1(Websocket, Worker):-
         ),
         !,
         listen_proactive_loop_1(Websocket, Worker).
+
+destroy_listeners:-
+        thread_self(Self),
+        retractall(proactive_message_listener(_, _, _, Self)).
+
+dispatch_user_message(Websocket, Term, Key):-
+        package_message(Term, Key, Text),
+        ws_send(Websocket, text(Text)).
+
+
+package_message(Term, Key, Text):-
+        format(atom(Text), '~k', [user(Term, Key)]).
+
+should_handle_message(Class, Term, Key):-
+        thread_self(Self),
+        proactive_message_listener(Class, Discriminator, Key, Self),
+        catch(\+ \+ (call(Discriminator, Term)), _, fail).
+
+:-dynamic
+        proactive_message_listener/4.
+
+broadcast_proactive_message(Class, Term):-
+        forall(proactive_message_listener(Class, _, _, Queue),
+               thread_send_message(Queue, message(Class, Term))).
 
 ws_listen_worker(Websocket, Owner):-
         ws_receive(Websocket, Message),
@@ -105,6 +134,10 @@ ws_listen_worker(Websocket, Owner):-
                     true
                 ; format(user_error, 'Failure handling Proactive message ~q~n', [T])
                 )
+            ; Term = register_for(Class, Discriminator, Key)->
+                ??assert(proactive_message_listener(Class, Discriminator, Key, Owner))
+            ; Term = deregister(Key)->
+                ??retractall(proactive_message_listener(_, _, Key, Owner))
             ; Term == ping ->
                 thread_send_message(Owner, ping)
             ; format(user_error, 'Unexpected message from client: ~q~n', [Term])
@@ -259,7 +292,7 @@ serve_proactive_form(FormId, Request):-
         http_absolute_location(proactive('.'), Path, []),
         parse_url(URL, [path(Path)|R1]),
 
-        format(atom(Bootstrap), 'window.onPrologReady = function() {Proactive.render("~w", "~w", document.getElementById("container"));}', [URL, FormId]),
+        format(atom(Bootstrap), 'window.onPrologReady = function() {Proactive.render("~w", "~w", document.getElementById("container"));}; if (window.prologReady) {console.log("Prolog already ready. Booting proactive"); window.onPrologReady();}', [URL, FormId]),
 
         % Change development -> production.min to get minified version
         HTML = element(html, [], [element(head, [], [element(script, [src='https://unpkg.com/react/umd/react.development.js', crossorigin=anonymous], []),
