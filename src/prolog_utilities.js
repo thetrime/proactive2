@@ -30,6 +30,10 @@ function jsToProlog(js)
             List = Prolog.make_compound(Constants.listFunctor, [jsToProlog(js.list[i]), List]);
         return List;
     }
+    else if (js.variable !== undefined)
+    {
+        return Prolog.make_variable();
+    }
     else
     {
         return Prolog.make_atom("<unknown>");
@@ -91,6 +95,10 @@ function prologToJS(Term)
     else if (Prolog.is_blob(Term, "widget"))
     {
         return {widget: Prolog.get_blob("widget", Term)};
+    }
+    else if (Prolog.is_variable(Term))
+    {
+        return {variable: 0};
     }
     else
     {
