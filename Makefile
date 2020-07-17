@@ -25,3 +25,6 @@ endif
 
 proactive-${VERSION}/lib/proscript.wasm: proscript2/proscript.wasm
 	cp proscript2/proscript.wasm $@
+
+clean:
+	rm -rf proactive-*
