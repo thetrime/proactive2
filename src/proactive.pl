@@ -7,7 +7,6 @@
 :- use_module(library(http/http_path)).
 :- use_module(library(http/websocket)).
 :- use_module(library(http/http_session)).
-:- use_module(src/jsx).
 
 
 :-http_handler(proactive(goal), execute_proactive, []).
@@ -15,13 +14,9 @@
 :-http_handler(proactive(form/FormId), serve_proactive_form(FormId), [prefix]).
 :-http_handler(proactive(component/FormId), serve_component(FormId), []).
 
-:-http_handler(proactive('boilerplate.pl'), serve_proactive_asset('boilerplate.pl'), []).
-:-http_handler(proactive(lib/'proactive.js'), serve_proactive_asset('proactive.js'), []).
-:-http_handler(proactive(lib/'proscript.wasm'), serve_proactive_asset('proscript.wasm'), []).
-
-serve_proactive_asset(Filename, Request):-
-        expand_file_search_path(proactive_lib(Filename), ActualFilename),
-        http_reply_file(ActualFilename, [], Request).
+:-http_handler(proactive('boilerplate.pl'), http_reply_file(proactive_lib('boilerplate.pl'), []), []).
+:-http_handler(proactive(lib/'proactive.js'), http_reply_file(proactive_lib('proactive.js'), []), []).
+:-http_handler(proactive(lib/'proscript.wasm'), http_reply_file(proactive_lib('proscript.wasm'), []), []).
 
 execute_proactive(Request):-
         ( http_in_session(SessionID)->
@@ -429,3 +424,6 @@ user:on_server(Goal):- Goal.
 user:get_this(fixme).
 user:bubble_event(_, Event):-
         permission_error(handle, event, Event).
+user:bubble_event(_, _, Event):-
+        permission_error(handle, event, Event).
+user:media_size(800, 600).
