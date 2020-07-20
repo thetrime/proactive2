@@ -60,7 +60,7 @@ module.exports = function(MessageService)
 
         render()
         {
-            return React.createElement('div', null, `Listener Component`);
+            return null;
         }
 
         componentDidMount()
