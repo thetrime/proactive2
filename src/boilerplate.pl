@@ -71,3 +71,11 @@ show(Goal, Goal, full, _):-
 :-meta_predicate(?(0)).
 ?(Goal):- show(Goal, Goal, minimal, _).
 ??(Goal):- show(Goal, Goal, explicit, _).
+
+bubble_event(List, Key, Event):-
+	'.'(List, Key, Handler),
+	( Handler \== {null}->
+            bubble_event(Handler, Event)
+        ; otherwise->
+            true
+        ).
