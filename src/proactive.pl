@@ -286,6 +286,15 @@ send_reply(WebSocket, Term):-
 
 
 serve_proactive_form(FormId, Request):-
+        ( predicate_property(proactive:allow_access_to_form(_), number_of_clauses(_))->
+            ( proactive:allow_access_to_form(Module)->
+                true
+            ; otherwise->
+                memberchk(path(Path), Request),
+                throw(http_reply(forbidden(Path)))
+            )
+        ; true
+        ),
         subtract(Request, [path(_)], R1),
         http_absolute_location(proactive('.'), Path, []),
         parse_url(URL, [path(Path)|R1]),
