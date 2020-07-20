@@ -12,20 +12,16 @@
 
 :-http_handler(proactive(goal), execute_proactive, []).
 :-http_handler(proactive(listen), listen_proactive, [spawn([])]).
-:-http_handler(proactive('boilerplate.pl'), http_reply_file('src/boilerplate.pl', []), []).
 :-http_handler(proactive(form/FormId), serve_proactive_form(FormId), [prefix]).
 :-http_handler(proactive(component/FormId), serve_component(FormId), []).
 
+:-http_handler(proactive('boilerplate.pl'), serve_proactive_asset('boilerplate.pl'), []).
+:-http_handler(proactive(lib/'proactive.js'), serve_proactive_asset('proactive.js'), []).
+:-http_handler(proactive(lib/'proscript.wasm'), serve_proactive_asset('proscript.wasm'), []).
 
-user:term_expansion(:-serve_lib, :-http_handler(root('lib/'), http_reply_from_files(Location, []), [prefix])):-
-        setup_call_cleanup(open('VERSION', read, S),
-                           read_string(S, _, Version),
-                           close(S)),
-        format(atom(Location), 'proactive-~s/lib', [Version]).
-
-:-serve_lib.
-
-
+serve_proactive_asset(Filename, Request):-
+        expand_file_search_path(proactive_lib(Filename), ActualFilename),
+        http_reply_file(ActualFilename, [], Request).
 
 execute_proactive(Request):-
         ( http_in_session(SessionID)->
@@ -298,13 +294,14 @@ serve_proactive_form(FormId, Request):-
         subtract(Request, [path(_)], R1),
         http_absolute_location(proactive('.'), Path, []),
         parse_url(URL, [path(Path)|R1]),
+        http_absolute_location(proactive('lib/proactive.js'), LibPath, []),
 
         format(atom(Bootstrap), 'window.onPrologReady = function() {Proactive.render("~w", "~w", document.getElementById("container"));}; if (window.prologReady) {console.log("Prolog already ready. Booting proactive"); window.onPrologReady();}', [URL, FormId]),
 
         % Change development -> production.min to get minified version
         HTML = element(html, [], [element(head, [], [element(script, [src='https://unpkg.com/react/umd/react.development.js', crossorigin=anonymous], []),
                                                      element(script, [src='https://unpkg.com/react-dom/umd/react-dom.development.js', crossorigin=anonymous], []),
-                                                     element(script, [src='/lib/proactive.js'], []),
+                                                     element(script, [src=LibPath], []),
                                                      element(link, [rel=stylesheet,
                                                                     href='https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css',
                                                                     integrity='sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh',

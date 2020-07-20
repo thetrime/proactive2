@@ -7,6 +7,9 @@
 http:location(proactive, root(proactive), []).
 
 main:-
+        setup_call_cleanup(open('VERSION', read, S), read_string(S, _, Version), close(S)),
+        format(atom(Location), 'proactive-~s/lib', [Version]),
+        assert(file_search_path(proactive_lib, Location)),
         http_server(http_dispatch, [port(8880)]).
 
 :-multifile(proactive:goal_is_safe/1).
@@ -20,3 +23,5 @@ term_expansion(end_of_file, _):-
         current_predicate(trigger_proactive_recompile/1),
         trigger_proactive_recompile(Module),
         fail.
+
+

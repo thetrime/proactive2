@@ -326,6 +326,7 @@ Proactive = {render: function(url, module, container)
                              var NewState = Prolog.make_variable();
                              var Handler = PrologUtilities.jsToProlog(event.handler);
                              var Event = PrologUtilities.jsToProlog(event.event);
+                             console.log(Prolog.portray(Event));
                              this.callAsynchronously(this.module, Handler, [Event, this.state, this.props, NewState], function(success)
                                                          {
                                                              if (success)
