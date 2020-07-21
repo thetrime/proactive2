@@ -91,8 +91,23 @@ multi_line_comment-->
 spaces --> [Code], {code_type(Code, space)}, optional_spaces.
 optional_spaces --> spaces ; comment ; [].
 
-jsx_tag(Tag)-->
-        jsx_atom(Tag).
+jsx_tag(TagSpec)-->
+        jsx_atom(Tag),
+        ( `.` ->
+            jsx_tag_list(Tail),
+            {TagSpec = [Tag|Tail]}
+        ; {TagSpec = Tag}
+        ).
+
+
+jsx_tag_list(List)-->
+        jsx_atom(Tag),
+        ( `.` ->
+            jsx_tag_list(Tail),
+            {List = [Tag|Tail]}
+        ; {List = [Tag]}
+        ).
+
 
 jsx_atom(Atom)-->
         jsx_atom_code(Code),

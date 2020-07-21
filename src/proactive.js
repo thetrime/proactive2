@@ -7,6 +7,23 @@ function isEventHandler(e)
     return e.startsWith("on");
 }
 
+function getBootstrapElement(e)
+{
+    var o = ReactBootstrap;
+    if (e instanceof Array)
+    {
+        for (var i = 0; i < e.length; i++)
+        {
+            o = o[e[i]];
+            if (o === undefined)
+                return o;
+        }
+        return o;
+    }
+    else
+        return o[e];
+}
+
 var pendingEvents = [];
 var currentlyProcessingEvents = false;
 
@@ -226,24 +243,40 @@ Proactive = {render: function(url, module, container)
                          {
                              if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.elementFunctor)
                              {
-                                 var tag = Prolog.atom_chars(Prolog.term_arg(Term, 0));
+                                 var Tag = Prolog.term_arg(Term, 0);
+                                 var tag;
+                                 if (Prolog.is_atom(Tag))
+                                 {
+                                     tag = Prolog.atom_chars(Tag);
+                                 }
+                                 else if (Prolog.is_compound(Tag) && Prolog.term_functor(Tag) == Constants.listFunctor)
+                                 {
+                                     tag = [];
+                                     Prolog.forEach(Tag, function(i) { tag.push(Prolog.atom_chars(i)); }, function(e) { console.log("Bad list in tag: " + Prolog.portray(e));});
+                                 }
                                  var children = [];
                                  this.listToDOM(Prolog.term_arg(Term, 2), children);
                                  if (specials[tag] !== undefined)
                                  {
-                                     return React.createElement(specials[tag], specials[tag].attributesToJS(module, Prolog.term_arg(Term, 1)));
+                                     return React.createElement(specials[tag], specials[tag].attributesToJS(module, Prolog.term_arg(Term, 1)), 0);
                                  }
                                  if (classes[tag] !== undefined)
                                  {
                                      // This is a Prolog-defined Proactive class
                                      var attributes = this.attributesToJS(Prolog.term_arg(Term, 1), true);
-                                     return React.createElement(classes[tag], attributes, children);
+                                     if (children.length == 0)
+                                         return React.createElement(classes[tag], attributes);
+                                     else
+                                         return React.createElement(classes[tag], attributes, children);
                                  }
-                                 else if (ReactBootstrap[tag] !== undefined)
+                                 else if (getBootstrapElement(tag) !== undefined)
                                  {
                                      // This is a Bootstrap object
                                      var attributes = this.attributesToJS(Prolog.term_arg(Term, 1));
-                                     return React.createElement(ReactBootstrap[tag], attributes, children);
+                                     if (children.length == 0)
+                                         return React.createElement(getBootstrapElement(tag), attributes);
+                                     else
+                                         return React.createElement(getBootstrapElement(tag), attributes, children);
                                  }
                                  else
                                  {

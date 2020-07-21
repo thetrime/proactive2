@@ -287,7 +287,7 @@ send_reply(WebSocket, Term):-
 
 serve_proactive_form(FormId, Request):-
         ( predicate_property(proactive:allow_access_to_form(_), number_of_clauses(_))->
-            ( proactive:allow_access_to_form(Module)->
+            ( proactive:allow_access_to_form(FormId)->
                 true
             ; otherwise->
                 memberchk(path(Path), Request),
@@ -307,8 +307,8 @@ serve_proactive_form(FormId, Request):-
                                                      element(script, [src='https://unpkg.com/react-dom/umd/react-dom.development.js', crossorigin=anonymous], []),
                                                      element(script, [src=LibPath], []),
                                                      element(link, [rel=stylesheet,
-                                                                    href='https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css',
-                                                                    integrity='sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh',
+                                                                    href='https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css',
+                                                                    integrity='sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk',
                                                                     crossorigin=anonymous], [])]),
                                   element(body, [], [element(div, [id=container], []),
                                                      element(script, [src='https://unpkg.com/react-bootstrap@next/dist/react-bootstrap.min.js'], []),
