@@ -29,7 +29,11 @@ module.exports = function(State, Key, Value)
     if (Prolog.is_atom(Key))
     {
         var key = Prolog.atom_chars(Key);
-        return Prolog.unify(Value, PrologUtilities.jsToProlog(Prolog.get_blob("dict", State).data[key]));
+        var value = Prolog.get_blob("dict", State).data[key];
+        if (value === undefined)
+            return Null(Value);
+        else
+            return Prolog.unify(Value, PrologUtilities.jsToProlog(value));
     }
     throw new Error("Oops2");
     return 0;

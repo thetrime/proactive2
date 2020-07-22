@@ -36,6 +36,9 @@ function jsToProlog(js)
     }
     else
     {
+        console.log("Cannot convert");
+        console.log(js);
+        console.trace();
         return Prolog.make_atom("<unknown>");
     }
 };
@@ -65,6 +68,8 @@ function prologToJS(Term)
     Term = Prolog.deref(Term);
     if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.curlyFunctor)
     {
+        if (Prolog.term_arg(Term, 0) == Constants.nullAtom)
+            return null;
         return dictEntriesToJS(Prolog.term_arg(Term, 0));
     }
     if (Term == Constants.emptyCurlyAtom)

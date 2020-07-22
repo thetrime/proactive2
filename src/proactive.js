@@ -316,6 +316,16 @@ Proactive = {render: function(url, module, container)
                                          return React.createElement(tag, attributes, children);
                                  }
                              }
+                             else if (Term == Constants.emptyListAtom)
+                             {
+                                 // [] -> null
+                                 return null;
+                             }
+                             else if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.curlyFunctor && Prolog.term_arg(Term, 0) == Constants.nullAtom)
+                             {
+                                 // {null} -> null
+                                 return null;
+                             }
                              else if (Prolog.is_constant(Term))
                              {
                                  return Prolog.portray(Term);
