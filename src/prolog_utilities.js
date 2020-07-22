@@ -1,9 +1,11 @@
 var Prolog = require('proscript2');
 var Constants = require('./constants');
 
-function jsToProlog(js)
+function jsToProlog(js, nullIfBad)
 {
     if (js == null)
+        return Null();
+    if (js === undefined)
         return Null();
     else if (js.atom !== undefined)
         return Prolog.make_atom(js.atom);
@@ -26,13 +28,17 @@ function jsToProlog(js)
     else if (js.list !== undefined)
     {
         var List = Constants.emptyListAtom;
-        for (var i = 0; i < js.list.length; i++)
+        for (var i = js.list.length-1; i >= 0; i--)
             List = Prolog.make_compound(Constants.listFunctor, [jsToProlog(js.list[i]), List]);
         return List;
     }
     else if (js.variable !== undefined)
     {
         return Prolog.make_variable();
+    }
+    else if (nullIfBad)
+    {
+        return Null();
     }
     else
     {

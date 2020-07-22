@@ -311,7 +311,7 @@ serve_proactive_form(FormId, Request):-
                                                                     integrity='sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk',
                                                                     crossorigin=anonymous], [])]),
                                   element(body, [], [element(div, [id=container], []),
-                                                     element(script, [src='https://unpkg.com/react-bootstrap@next/dist/react-bootstrap.min.js'], []),
+                                                     element(script, [src='https://unpkg.com/react-bootstrap@next/dist/react-bootstrap.js', crossorigin=anonymous], []),
                                                      element(script, [type='text/javascript'], [Bootstrap])])]),
         format(current_output, 'Content-type: text/html~n~n', []),
         html_write(current_output, HTML, []).

@@ -118,6 +118,7 @@ Proactive = {render: function(url, module, container)
 
                          componentDidMount()
                          {
+
                              if (Prolog.exists_predicate(Prolog.make_atom(module), Constants.getInitialStateFunctor))
                              {
                                  this.queueEvent({atom: "getInitialState"},
@@ -131,6 +132,56 @@ Proactive = {render: function(url, module, container)
                              }
                              else
                                  this.mounted = true;
+                         }
+
+                         
+                         // This assumes we only care about props set from Prolog
+                         propsChanged(before, after)
+                         {
+                             var keys = Object.keys(after);
+                             var checkpoint = Prolog.save_state()
+                             for (var i = 0; i < keys.length; i++)
+                             {
+                                 var key = keys[i];
+                                 var newValue = after[key];
+                                 var oldValue = before[key];
+                                 if (!Prolog.unify(PrologUtilities.jsToProlog(newValue), PrologUtilities.jsToProlog(oldValue)))
+                                 {
+                                     Prolog.restore_state(checkpoint);
+                                     return true;
+                                 }
+                             }
+                             Prolog.restore_state(checkpoint);
+                             return false;
+                         }
+
+                         componentDidUpdate(prevProps)
+                         {
+                             if (Prolog.exists_predicate(Prolog.make_atom(module), Constants.getInitialStateFunctor))
+                             {
+                                 var keys = Object.keys(this.props);
+                                 var checkpoint = Prolog.save_state();
+                                 for (var i = 0; i < keys.length; i++)
+                                 {
+                                     var key = keys[i];
+                                     var newValue = this.props[key];
+                                     var oldValue = prevProps[key];
+                                     if (!Prolog.unify(PrologUtilities.jsToProlog(newValue, true), PrologUtilities.jsToProlog(oldValue, true)))
+                                     {
+                                         Prolog.restore_state(checkpoint);
+                                         this.queueEvent({atom: "getInitialState"},
+                                                         function(State) { return [this.props, State]}.bind(this),
+                                                         function(success)
+                                                         {
+                                                             if (!success)
+                                                                 this.setState({});
+                                                         }.bind(this));
+                                         return;
+                                     }
+                                 }
+                                 // Props have not meaningfully changed
+                                 Prolog.restore_state(checkpoint);
+                             }
                          }
 
                          queueEvent(handler, getArgs, afterEvent)
@@ -213,8 +264,9 @@ Proactive = {render: function(url, module, container)
                              }
                              else if (Prolog.is_compound(Term))
                              {
-                                 args = new Array[extraArgs.length + Prolog.term_functor_arity(Term)];
-                                 Functor = Prolog.term_functor(Term);
+                                 var arity = extraArgs.length + Prolog.term_functor_arity(Term);
+                                 args = new Array(arity);
+                                 Functor = Prolog.make_functor(Prolog.term_functor_name(Term), arity);
                                  var i = 0;
                                  for (i = 0; i < Prolog.term_functor_arity(Term); i++)
                                      args[i] = Prolog.term_arg(Term, i);
@@ -301,8 +353,12 @@ Proactive = {render: function(url, module, container)
                                  {
                                      // This is a Bootstrap object
                                      var attributes = this.attributesToJS(Prolog.term_arg(Term, 1));
+                                     // FIXME: This should be something like React.createElement.apply(this, args)
+                                     // Where args is, in Prolog notation, [getBootstrapElement(tag), attributes|Children]
                                      if (children.length == 0)
                                          return React.createElement(getBootstrapElement(tag), attributes);
+                                     else if (children.length == 1)
+                                         return React.createElement(getBootstrapElement(tag), attributes, children[0]);
                                      else
                                          return React.createElement(getBootstrapElement(tag), attributes, children);
                                  }
@@ -332,7 +388,7 @@ Proactive = {render: function(url, module, container)
                              }
                              else
                              {
-                                 console.log("Unexpected DOM: " + Prolog.portray(Term));
+                                 //console.log("Unexpected DOM: " + Prolog.portray(Term));
                              }
                              return null;
                          }
@@ -359,6 +415,15 @@ Proactive = {render: function(url, module, container)
                                      else if (Prolog.is_atom(Value))
                                      {
                                          map[name] = Prolog.atom_chars(Value);
+                                     }
+                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.selectorFunctor)
+                                     {
+                                         var element = document.querySelector(Prolog.atom_chars(Prolog.term_arg(Value, 0)));
+                                         map[name] = element;
+                                     }
+                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.booleanFunctor)
+                                     {
+                                         map[name] = Prolog.atom_chars(Prolog.term_arg(Value, 0)) == "true";
                                      }
                                      else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.classFunctor)
                                      {
