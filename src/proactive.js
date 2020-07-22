@@ -110,7 +110,10 @@ Proactive = {render: function(url, module, container)
                              this.id = next_id++;
                              this.module = module;
                              this.state = {};
-                             this.mounted = false;
+                             if (Prolog.exists_predicate(Prolog.make_atom(module), Constants.getInitialStateFunctor))
+                                 this.mounted = false;
+                             else
+                                 this.mounted = true;
                          }
 
                          componentDidMount()
@@ -119,7 +122,12 @@ Proactive = {render: function(url, module, container)
                              {
                                  this.queueEvent({atom: "getInitialState"},
                                                  function(State) { return [this.props, State]}.bind(this),
-                                                 function() { this.mounted = true; }.bind(this));
+                                                 function(success)
+                                                 {
+                                                     this.mounted = true;
+                                                     if (!success)
+                                                         this.setState({});
+                                                 }.bind(this));
                              }
                              else
                                  this.mounted = true;
