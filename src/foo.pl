@@ -25,8 +25,11 @@ render(State, _Props, Form):-
         writeln(state=State.input_data).
 
 
-getInitialState(_, {counter: 0,
-                    input_data: 'cat'}).
+getInitialState(_, {counter: X,
+                    input_data: 'cat'}):-
+        on_server(get_counter(X)).
+
+get_counter(3).
 
 someEvent(_Event, State, _Props, {counter: NewCounter}):-
         findall(X,

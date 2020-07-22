@@ -3,6 +3,7 @@
 var Prolog = require('proscript2');
 
 module.exports = {getInitialStateFunctor: Prolog.make_functor(Prolog.make_atom("getInitialState"), 2),
+                  getInitialStateAtom: Prolog.make_atom("getInitialState"),
                   renderFunctor: Prolog.make_functor(Prolog.make_atom("render"), 3),
                   crossModuleCallFunctor: Prolog.make_functor(Prolog.make_atom(":"), 2),
                   elementFunctor: Prolog.make_functor(Prolog.make_atom("element"), 3),
@@ -21,5 +22,6 @@ module.exports = {getInitialStateFunctor: Prolog.make_functor(Prolog.make_atom("
                   abortedAtom: Prolog.make_atom("$aborted"),
                   systemFunctor: Prolog.make_functor(Prolog.make_atom("system"), 1),
                   userFunctor: Prolog.make_functor(Prolog.make_atom("user"), 2),
-                  consultedFunctor: Prolog.make_functor(Prolog.make_atom("consulted"), 1)};
+                  consultedFunctor: Prolog.make_functor(Prolog.make_atom("consulted"), 1),
+                  classFunctor: Prolog.make_functor(Prolog.make_atom("class"), 1)};
 

@@ -15,3 +15,6 @@ clickHandler(Event, _State, Props, {}):-
         bubble_event(Props.test, [extra=zin|Event]).
 
 other_discriminator(_).
+
+getInitialState(_, {}):-
+        on_server(??sleep(2)).

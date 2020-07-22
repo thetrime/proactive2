@@ -27,6 +27,12 @@ function getBootstrapElement(e)
 var pendingEvents = [];
 var currentlyProcessingEvents = false;
 
+function dispatchGlobalEvent()
+{
+    currentlyProcessingEvents = true;
+    var event = pendingEvents.shift();
+    event.caller.dispatchAnEvent(event);
+}
 
 Proactive = {render: function(url, module, container)
              {
@@ -40,7 +46,7 @@ Proactive = {render: function(url, module, container)
                  {
                      Prolog.hard_reset();
                      Prolog.define_foreign(".", require('./dot'));
-                     Prolog.define_foreign("on_server", require('./on_server')(url));
+                     Prolog.define_foreign("_on_server", require('./on_server')(url));
                      Prolog.define_foreign("get_this", require('./get_this'));
                      Prolog.define_foreign("media_size", require('./media_size'));
                      Prolog.define_foreign("get_ticks", require('./get_ticks'));
@@ -57,16 +63,22 @@ Proactive = {render: function(url, module, container)
                                             var newClasses = {};
                                             if (rc == 1)
                                             {
+                                                var modules = [];
                                                 Prolog.forEach(Components,
                                                                function(Module)
                                                                {
-                                                                   if (this.classes[Prolog.atom_chars(Module)] == undefined)
-                                                                       newClasses[Prolog.atom_chars(Module)] = defineProactiveComponent(Prolog.atom_chars(Module));
-                                                                   else
-                                                                       newClasses[Prolog.atom_chars(Module)] = this.classes[Prolog.atom_chars(Module)];
+                                                                   modules.push(Prolog.atom_chars(Module));
                                                                },
                                                                function() {}
                                                               );
+                                                Prolog.restore_state(checkpoint);
+                                                for (var i = 0; i < modules.length; i++)
+                                                {
+                                                    if (this.classes[modules[i]] == undefined)
+                                                        newClasses[modules[i]] = defineProactiveComponent(modules[i]);
+                                                    else
+                                                        newClasses[modules[i]] = this.classes[modules[i]];
+                                                };
                                                 this.classes = newClasses;
                                                 ReactDOM.render(React.createElement(classes[module], null, []), container);
                                             }
@@ -76,7 +88,6 @@ Proactive = {render: function(url, module, container)
                                             }
                                             else
                                                 console.log("Failed to get components: " + rc);
-                                            Prolog.restore_state(checkpoint);
 
                                         });
                  }
@@ -98,25 +109,31 @@ Proactive = {render: function(url, module, container)
                              super(props);
                              this.id = next_id++;
                              this.module = module;
+                             this.state = {};
+                             this.mounted = false;
+                         }
+
+                         componentDidMount()
+                         {
                              if (Prolog.exists_predicate(Prolog.make_atom(module), Constants.getInitialStateFunctor))
                              {
-                                 var State = Prolog.make_variable();
-                                 var rc = this.callSynchronously(module, Constants.getInitialStateFunctor, [this.props, State], function(rc)
-                                                                 {
-                                                                     if (rc == 1)
-                                                                     {
-                                                                         this.state = PrologUtilities.prologToJS(Prolog.deref(State));
-                                                                     }
-                                                                     else
-                                                                     {
-                                                                         this.state = {}
-                                                                     }
-                                                                 });
+                                 this.queueEvent({atom: "getInitialState"},
+                                                 function(State) { return [this.props, State]}.bind(this),
+                                                 function() { this.mounted = true; }.bind(this));
                              }
                              else
-                             {
-                                 this.state = {}
-                             }
+                                 this.mounted = true;
+                         }
+
+                         queueEvent(handler, getArgs, afterEvent)
+                         {
+                             pendingEvents.push({caller: this,
+                                                 handler: handler,
+                                                 getArgs: getArgs,
+                                                 afterEvent: afterEvent});
+                             if (!currentlyProcessingEvents)
+                                 dispatchGlobalEvent();
+
                          }
 
                          prepareEnvironment(args, env)
@@ -135,6 +152,7 @@ Proactive = {render: function(url, module, container)
                                      env.blobs.push(State);
                                      args[i] = State;
                                  }
+
                              }
                              var This = Prolog.make_blob("widget", this);
                              env.blobs.push(This);
@@ -211,6 +229,8 @@ Proactive = {render: function(url, module, container)
 
                          render()
                          {
+                             if (!this.mounted)
+                                 return React.createElement('div', null, `Loading...`);
                              var Form = Prolog.make_variable();
                              return this.callSynchronously(module, Constants.renderFunctor, [this.state, this.props, Form], function(rc)
                                                            {
@@ -322,6 +342,21 @@ Proactive = {render: function(url, module, container)
                                      {
                                          map[name] = Prolog.atom_chars(Value);
                                      }
+                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.classFunctor)
+                                     {
+                                         var ClassName = Prolog.term_arg(Value, 0);
+                                         var path;
+                                         if (Prolog.is_atom(ClassName))
+                                         {
+                                             path = Prolog.atom_chars(ClassName);
+                                         }
+                                         else if (Prolog.is_compound(ClassName) && Prolog.term_functor(ClassName) == Constants.listFunctor)
+                                         {
+                                             path = [];
+                                             Prolog.forEach(ClassName, function(i) { path.push(Prolog.atom_chars(i)); }, function(e) { console.log("Bad list in class: " + Prolog.portray(e));});
+                                         }
+                                         map[name] = getBootstrapElement(path);
+                                     }
                                      else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.dictFunctor) // FIXME: Suspect?
                                      {
                                          map[name] = PrologUtilities.dictEntriesToJS(Value);
@@ -343,36 +378,30 @@ Proactive = {render: function(url, module, container)
 
                          processEvent(handler, event)
                          {
-                             pendingEvents.push({handler: handler,
-                                                 event: event});
-                             if (!currentlyProcessingEvents)
-                                 this.dispatchAnEvent();
-                             else
-                                 console.log("Already processing an event");
+                             this.queueEvent(handler, function(NewState) { return [PrologUtilities.jsToProlog(event), this.state, this.props, NewState]}.bind(this));
                          }
 
-                         dispatchAnEvent()
+                         dispatchAnEvent(event)
                          {
-                             currentlyProcessingEvents = true;
-                             var event = pendingEvents.shift();
                              var checkpoint = Prolog.save_state();
                              var NewState = Prolog.make_variable();
                              var Handler = PrologUtilities.jsToProlog(event.handler);
-                             var Event = PrologUtilities.jsToProlog(event.event);
-                             console.log(Prolog.portray(Event));
-                             this.callAsynchronously(this.module, Handler, [Event, this.state, this.props, NewState], function(success)
+                             this.callAsynchronously(this.module, Handler, event.getArgs(NewState), function(success)
+                                                     {
+                                                         if (event.afterEvent)
+                                                             event.afterEvent(success);
+                                                         if (success)
                                                          {
-                                                             if (success)
-                                                             {
-                                                                 var newState = PrologUtilities.prologToJS(Prolog.deref(NewState));
-                                                                 this.setState(newState);
-                                                             }
-                                                             Prolog.restore_state(checkpoint);
-                                                             if (pendingEvents.length == 0)
-                                                                 currentlyProcessingEvents = false;
-                                                             else
-                                                                 dispatchAnEvent();
-                                                         });
+                                                             var newState = PrologUtilities.prologToJS(Prolog.deref(NewState));
+                                                             // This may trigger an event, but it must be synchronous
+                                                             this.setState(newState);
+                                                         }
+                                                         Prolog.restore_state(checkpoint);
+                                                         if (pendingEvents.length == 0)
+                                                             currentlyProcessingEvents = false;
+                                                         else
+                                                             dispatchGlobalEvent();
+                                                     });
                          }
 
                          makeEventHandler(Term)
