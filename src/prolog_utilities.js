@@ -20,10 +20,7 @@ function jsToProlog(js, nullIfBad)
     }
     else if (js.widget !== undefined)
     {
-        var Blob = Prolog.make_blob("widget", js.widget);
-        if (this.blobs !== undefined)
-            this.blobs.push(Blob);
-        return Blob;
+        return js.widget;
     }
     else if (js.list !== undefined)
     {
@@ -45,7 +42,7 @@ function jsToProlog(js, nullIfBad)
         console.log("Cannot convert");
         console.log(js);
         console.trace();
-        return Prolog.make_atom("<unknown>");
+        return Prolog.make_atom("<unknownx>");
     }
 };
 
@@ -146,7 +143,7 @@ function prologToJS(Term)
     }
     else if (Prolog.is_blob(Term, "widget"))
     {
-        return {widget: Prolog.get_blob("widget", Term)};
+        return {widget: Term};
     }
     else if (Prolog.is_variable(Term))
     {
@@ -204,6 +201,6 @@ module.exports = {jsToProlog: jsToProlog,
                   },
                   make_event: function(e)
                   {
-                      return {list: {compound: {name: "=", args: [{atom: "value"}, {atom: e.target.value}]}}};
+                      return {list: [{compound: {name: "=", args: [{atom: "value"}, {atom: e.target.value}]}}]};
                   }
                  };

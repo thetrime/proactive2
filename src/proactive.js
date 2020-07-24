@@ -107,6 +107,7 @@ Proactive = {render: function(url, module, container)
                          constructor(props)
                          {
                              super(props);
+                             this.blob = Prolog.make_blob("widget", this);
                              this.id = next_id++;
                              this.module = module;
                              this.state = {};
@@ -114,6 +115,11 @@ Proactive = {render: function(url, module, container)
                                  this.mounted = false;
                              else
                                  this.mounted = true;
+                         }
+
+                         componentWillUnmount()
+                         {
+                             Prolog.release_blob(this.blob);
                          }
 
                          componentDidMount()
@@ -213,18 +219,14 @@ Proactive = {render: function(url, module, container)
                                  }
 
                              }
-                             var This = Prolog.make_blob("widget", this);
-                             env.blobs.push(This);
-                             env._this = This;
+                             env._this = this.blob;
                          }
 
                          releaseEnvironment(env)
                          {
                              for (var i = 0; i < env.blobs.length; i++)
                              {
-                                 if (Prolog.is_blob(env.blobs[i], "widget"))
-                                     Prolog.release_blob("widget", env.blobs[i]);
-                                 else if (Prolog.is_blob(env.blobs[i], "dict"))
+                                 if (Prolog.is_blob(env.blobs[i], "dict"))
                                      Prolog.release_blob("dict", env.blobs[i]);
                                  else
                                      console.log("Warning: Unexpected blob in environment");
@@ -344,32 +346,19 @@ Proactive = {render: function(url, module, container)
                                  {
                                      // This is a Prolog-defined Proactive class
                                      var attributes = this.attributesToJS(Prolog.term_arg(Term, 1), true);
-                                     if (children.length == 0)
-                                         return React.createElement(classes[tag], attributes);
-                                     else
-                                         return React.createElement(classes[tag], attributes, children);
+                                     return React.createElement.apply(this, [classes[tag], attributes].concat(children));
                                  }
                                  else if (getBootstrapElement(tag) !== undefined)
                                  {
                                      // This is a Bootstrap object
                                      var attributes = this.attributesToJS(Prolog.term_arg(Term, 1));
-                                     // FIXME: This should be something like React.createElement.apply(this, args)
-                                     // Where args is, in Prolog notation, [getBootstrapElement(tag), attributes|Children]
-                                     if (children.length == 0)
-                                         return React.createElement(getBootstrapElement(tag), attributes);
-                                     else if (children.length == 1)
-                                         return React.createElement(getBootstrapElement(tag), attributes, children[0]);
-                                     else
-                                         return React.createElement(getBootstrapElement(tag), attributes, children);
+                                     return React.createElement.apply(this, [getBootstrapElement(tag), attributes].concat(children));
                                  }
                                  else
                                  {
                                      // This is a plain old HTML object
                                      var attributes = this.attributesToJS(Prolog.term_arg(Term, 1));
-                                     if (children.length == 0)
-                                         return React.createElement(tag, attributes);
-                                     else
-                                         return React.createElement(tag, attributes, children);
+                                     return React.createElement.apply(this, [tag, attributes].concat(children));
                                  }
                              }
                              else if (Term == Constants.emptyListAtom)
@@ -404,17 +393,21 @@ Proactive = {render: function(url, module, container)
                                  {
                                      var name = Prolog.atom_chars(Prolog.term_arg(Head, 0));
                                      var Value = Prolog.term_arg(Head, 1);
-                                     if (isEventHandler(name))
-                                     {
-                                         map[name] = this.makeEventHandler(Value);
-                                     }
-                                     else if (pure)
+                                     if (pure)
                                      {
                                          map[name] = PrologUtilities.prologToJS(Value);
+                                     }
+                                     else if (isEventHandler(name))
+                                     {
+                                         map[name] = this.makeEventHandler(Value);
                                      }
                                      else if (Prolog.is_atom(Value))
                                      {
                                          map[name] = Prolog.atom_chars(Value);
+                                     }
+                                     else if (Prolog.is_integer(Value) || Prolog.is_float(Value))
+                                     {
+                                         map[name] = Prolog.numeric_value(Value);
                                      }
                                      else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.selectorFunctor)
                                      {
