@@ -418,8 +418,8 @@ Proactive = {render: function(url, module, container)
                                      }
                                      else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.selectorFunctor)
                                      {
-                                         var element = document.querySelector(Prolog.atom_chars(Prolog.term_arg(Value, 0)));
-                                         map[name] = element;
+                                         var selector = Prolog.atom_chars(Prolog.term_arg(Value, 0));
+                                         map[name] = function() { return document.querySelector(selector); };
                                      }
                                      else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.booleanFunctor)
                                      {
@@ -440,9 +440,10 @@ Proactive = {render: function(url, module, container)
                                          }
                                          map[name] = getBootstrapElement(path);
                                      }
-                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.dictFunctor) // FIXME: Suspect?
+                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.curlyFunctor)
                                      {
-                                         map[name] = PrologUtilities.dictEntriesToJS(Value);
+                                         // Native dictionary object such as style={{foo: bar, baz: qux}}
+                                         map[name] = PrologUtilities.dictEntriesToJS(Prolog.term_arg(Value, 0), PrologUtilities.prologToJSNative);
                                      }
                                      else if (Prolog.is_compound(Value))
                                      {

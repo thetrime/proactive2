@@ -54,21 +54,62 @@ function Null()
     return Prolog.make_compound(Constants.curlyFunctor, [Constants.nullAtom]);
 };
 
-function listToJS(Term)
+function listToJS(Term, decodeValueFn)
 {
     var list = [];
     var Tail = Term;
     while (Prolog.is_compound(Tail) && Prolog.term_functor(Tail) == Constants.listFunctor)
     {
-        list.push(prologToJS(Prolog.term_arg(Tail, 0)));
+        list.push(decodeValueFn(Prolog.term_arg(Tail, 0)));
         Tail = Prolog.term_arg(Tail, 1);
     }
     if (Tail != Constants.emptyListAtom)
         console.log("Warning: improper list: " + Prolog.portray(Term));
     return list;
-
 }
 
+// This returns a normal-looking JS object. It is not possible to recover the Prolog representation
+function prologToJSNative(Term)
+{
+    Term = Prolog.deref(Term);
+    if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.curlyFunctor)
+    {
+        if (Prolog.term_arg(Term, 0) == Constants.nullAtom)
+            return null;
+        return dictEntriesToJS(Prolog.term_arg(Term, 0), prologToJSNative);
+    }
+    if (Term == Constants.emptyCurlyAtom)
+    {
+        return {};
+    }
+    else if (Prolog.is_atom(Term))
+    {
+        return Prolog.atom_chars(Term);
+    }
+    else if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.listFunctor)
+    {
+        return listToJS(Term, prologToJSNative);
+    }
+    else if (Prolog.is_integer(Term))
+    {
+        return Prolog.numeric_value(Term);
+    }
+    else if (Prolog.is_float(Term))
+    {
+        return Prolog.numeric_value(Term);
+    }
+    else if (Prolog.is_blob(Term, "widget"))
+    {
+        return Prolog.get_blob("widget", Term);
+    }
+    else
+    {
+        console.log("Warning: Cannot convert " + Prolog.portray(Term) + " to a native JS object");
+        return null;
+    }
+}
+
+// This serializes Prolog as JS. The object contains enough info to recover the original Prolog representation (except for variables)
 function prologToJS(Term)
 {
     Term = Prolog.deref(Term);
@@ -76,7 +117,7 @@ function prologToJS(Term)
     {
         if (Prolog.term_arg(Term, 0) == Constants.nullAtom)
             return null;
-        return dictEntriesToJS(Prolog.term_arg(Term, 0));
+        return dictEntriesToJS(Prolog.term_arg(Term, 0), prologToJS);
     }
     if (Term == Constants.emptyCurlyAtom)
     {
@@ -88,7 +129,7 @@ function prologToJS(Term)
     }
     else if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.listFunctor)
     {
-        return {list: listToJS(Term)};
+        return {list: listToJS(Term, prologToJS)};
     }
     else if (Prolog.is_compound(Term))
     {
@@ -117,7 +158,7 @@ function prologToJS(Term)
     }
 };
 
-function dictEntriesToJS(Term)
+function dictEntriesToJS(Term, decodeValueFn)
 {
     var map = {};
     while (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.dictFunctor)
@@ -127,7 +168,7 @@ function dictEntriesToJS(Term)
         if (Prolog.is_compound(Head) && Prolog.term_functor(Head) == Constants.dictPairFunctor)
         {
             var name = Prolog.atom_chars(Prolog.term_arg(Head, 0));
-            var value = prologToJS(Prolog.term_arg(Head, 1));
+            var value = decodeValueFn(Prolog.term_arg(Head, 1));
             map[name] = value;
         }
     }
@@ -135,7 +176,7 @@ function dictEntriesToJS(Term)
     if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.dictPairFunctor)
     {
         var name = Prolog.atom_chars(Prolog.term_arg(Term, 0));
-        var value = prologToJS(Prolog.term_arg(Term, 1));
+        var value = decodeValueFn(Prolog.term_arg(Term, 1));
         map[name] = value;
     }
     return map;
@@ -145,6 +186,7 @@ function dictEntriesToJS(Term)
 module.exports = {jsToProlog: jsToProlog,
                   Null: Null,
                   prologToJS: prologToJS,
+                  prologToJSNative: prologToJSNative,
                   dictEntriesToJS: dictEntriesToJS,
 
                   portray_dict: function(options, precedence)
