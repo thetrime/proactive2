@@ -29,6 +29,13 @@ var PrologUtilities = require('./prolog_utilities');
 
 module.exports = function(Handler, Event)
 {
+    // If the handler is null then just succeed - no one is listening but that is not an /error/
+    if (Prolog.is_compound(Handler) && Prolog.term_functor(Handler) == Constants.curlyFunctor && Prolog.term_arg(Handler, 0) == Constants.nullAtom)
+    {
+        console.log("No one is listening");
+        return 1;
+    }
+
     var checkpoint = Prolog.save_state();
 
     var target = Prolog.get_blob("widget", this._this);
@@ -38,6 +45,11 @@ module.exports = function(Handler, Event)
         target = Prolog.get_blob("widget", Blob);
         Handler = Prolog.term_arg(Handler, 1);
     }
+
+    /* This MIGHT be more suitable
+    target.processEvent(PrologUtilities.prologToJS(Handler), PrologUtilities.prologToJS(Event));
+    return 1;
+    */
 
     var resume = Prolog._yield();
     var NewState = Prolog.make_variable();
@@ -49,4 +61,5 @@ module.exports = function(Handler, Event)
                                   resume(rc);
                               });
     return 3; // YIELD
+
 }
