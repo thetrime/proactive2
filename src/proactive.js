@@ -119,7 +119,7 @@ Proactive = {render: function(url, module, container)
 
                          componentWillUnmount()
                          {
-                             Prolog.release_blob(this.blob);
+                             Prolog.release_blob("widget", this.blob);
                          }
 
                          componentDidMount()
