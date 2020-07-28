@@ -6,7 +6,7 @@ var Constants = require('./constants');
 module.exports = function(Now)
 {
     var date = new Date();
-    return Prolog.unify(Now, Prolog.make_compound(Constants.t7_functor,
+    return Prolog.unify(Now, Prolog.make_compound(Constants.t7Functor,
                                                   [Prolog.make_integer(date.getFullYear()),
                                                    Prolog.make_integer(date.getMonth() + 1),
                                                    Prolog.make_integer(date.getDate()),
