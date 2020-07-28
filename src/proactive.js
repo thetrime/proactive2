@@ -300,7 +300,7 @@ Proactive = {render: function(url, module, container)
                                                                switch(rc)
                                                                {
                                                                    case  2: console.log("Warning: render/3 was nondet"); /* Fall through */
-                                                                   case  1: return this.nodeToDOM(Prolog.deref(Form));
+                                                                   case  1: return this.listToDOM(Prolog.deref(Form), [])
                                                                    case  4: console.log("Exception in render/3:" + Prolog.portray(Prolog.get_exception())); /* Fall through */
                                                                    default: return React.createElement('div', null, `Failed to render component`);
                                                                }
@@ -320,6 +320,7 @@ Proactive = {render: function(url, module, container)
                              }
                              if (List != Constants.emptyListAtom)
                                  console.log("Bad list in listToDOM");
+                             return dom;
                          }
 
                          nodeToDOM(Term)

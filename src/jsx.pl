@@ -3,7 +3,7 @@
 :- quasi_quotation_syntax(jsx).
 
 jsx(Content, [Variable], Dict, Term):-
-        phrase_from_quasi_quotation(jsx_children(Dict, [DOM], Goals, true, NotSingletons, true), Content),
+        phrase_from_quasi_quotation(jsx_children(Dict, DOM, Goals, true, NotSingletons, true), Content),
         ( Goals == true->
             Term = (NotSingletons, Variable = DOM)
         ; otherwise->
@@ -29,7 +29,6 @@ tag_mismatch(Close, Tag, X, _):-
 :-multifile(jsx:jsx_expansion/2).
 
 jsx_node(Dict, FinalNode, Goals, GoalsTail, Singletons, SingletonsTail) -->
-        optional_spaces,
         `<`,
         jsx_tag(Tag), optional_spaces, jsx_attributes(Dict, Attributes, Goals, G1),
         { ( fail, % Not needed for proactive-2.0
@@ -45,7 +44,6 @@ jsx_node(Dict, FinalNode, Goals, GoalsTail, Singletons, SingletonsTail) -->
              SingletonsTail = Singletons}
         ; `>` ->
             jsx_children(Dict, Content, G1, GoalsTail, Singletons, SingletonsTail),
-            optional_spaces,
             `</`, jsx_tag(Close), `>`,
             ( {Close == Tag}->
                 {true}
@@ -57,8 +55,8 @@ jsx_node(Dict, FinalNode, Goals, GoalsTail, Singletons, SingletonsTail) -->
         optional_spaces,
         expand_jsx(Node, FinalNode).
 
-jsx_text_node(_Dict, Text) -->
-        read_until_open_tag(Codes),
+jsx_text_node(_Dict, Text, HasContent) -->
+        read_until_open_tag(Codes, false, HasContent),
         {Codes \== [],
          atom_codes(Text, Codes)}.
 
@@ -126,12 +124,10 @@ jsx_atom_codes([])--> [].
 
 jsx_children(Dict, [Term|Tail], Goal, GoalTail, Singletons, SingletonsTail)-->
         % This allows terms like {A}
-        optional_spaces,
         `{`,
           optional_spaces,
           read_until_close_brace(Codes, 1),
           `}`,
-        optional_spaces,
         {read_term_from_atom(Codes, Term, [variable_names(TermVariableNames)]),
          unify_variables(TermVariableNames, Dict)
         },
@@ -139,12 +135,10 @@ jsx_children(Dict, [Term|Tail], Goal, GoalTail, Singletons, SingletonsTail)-->
 
 jsx_children(Dict, [list(List)|Tail], Goal, GoalTail, Singletons, SingletonsTail)-->
         % This is for things like list([A, B, C])
-        optional_spaces,
         `list(`,
               optional_spaces,
               read_until_close_paren(Codes, [], 1),
               `)`,
-        optional_spaces,
         % Array of components. We have to have a pointer to the siblings, which is why we do it in jsx_children
         % rather than jsx_node
         {read_term_from_atom(Codes, Term, [variable_names(TermVariableNames)]),
@@ -156,7 +150,6 @@ jsx_children(Dict, [list(List)|Tail], Goal, GoalTail, Singletons, SingletonsTail
 
 jsx_children(Dict, Children, Goal, GoalTail, Singletons, SingletonsTail)-->
         % This allows terms like {A}, {[A, B]} and {Props.children}
-        optional_spaces,
         `{`,
         read_until_close_brace(Codes, 1),
         `}`,
@@ -169,7 +162,6 @@ jsx_children(Dict, Children, Goal, GoalTail, Singletons, SingletonsTail)-->
 jsx_children(Dict, Children, Goal, GoalTail, Singletons, SingletonsTail)-->
         % call(+DCG)
         % Called as call(DCG, Children, Tail)
-        optional_spaces,
         `call(`, !,
          read_until_close_paren(Codes, [], 1),
         `)`,
@@ -181,7 +173,6 @@ jsx_children(Dict, Children, Goal, GoalTail, Singletons, SingletonsTail)-->
 jsx_children(Dict, Children, Goal, GoalTail, Singletons, SingletonsTail)-->
         % findall(+Template, +Goal)
         % Called as findall(Template, Goal, Children, Tail)
-        optional_spaces,
         `findall(`, !,
          read_until_close_paren(Codes, [41], 1),
         `)`,
@@ -192,16 +183,27 @@ jsx_children(Dict, Children, Goal, GoalTail, Singletons, SingletonsTail)-->
          Goal = (findall(Template, BagGoal, Children, T1), G1)},
         jsx_children(Dict, T1, G1, GoalTail, Singletons, SingletonsTail).
 
-
 jsx_children(Dict, [Element|Elements], Goal, GoalTail, Singletons, SingletonsTail)-->
         jsx_node(Dict, Element, Goal, G1, Singletons, S1),
         !,
         jsx_children(Dict, Elements, G1, GoalTail, S1, SingletonsTail).
 
+/*
 jsx_children(Dict, [Element|Elements], Goal, GoalTail, Singletons, SingletonsTail)-->
-        jsx_text_node(Dict, Element),
+        jsx_text_node(Dict, Element, _HasContent),
         !,
         jsx_children(Dict, Elements, Goal, GoalTail, Singletons, SingletonsTail).
+*/
+
+jsx_children(Dict, Result, Goal, GoalTail, Singletons, SingletonsTail)-->
+        jsx_text_node(Dict, Element, HasContent),
+        {(HasContent == false->
+            Result = Elements
+         ; Result = [Element|Elements]
+         )},
+        !,
+        jsx_children(Dict, Elements, Goal, GoalTail, Singletons, SingletonsTail).
+
 
 jsx_children(_Dict, [], G, G, S, S)--> [].
 
@@ -229,11 +231,15 @@ jsx_attributes(Dict, [Name=Value|Attributes], Goals, GoalsTail)-->
 jsx_attributes(_, [], G, G)--> [].
 
 % read_until_open_tag//1 reads until we hit either < or {r
-read_until_open_tag([], [60|C], [60|C]):- !.
-read_until_open_tag([], [123|C], [123|C]):- !.
-read_until_open_tag([Code|Codes])-->
+read_until_open_tag([], HasContent, HasContent, [60|C], [60|C]):- !.
+read_until_open_tag([], HasContent, HasContent, [123|C], [123|C]):- !.
+read_until_open_tag([Code|Codes], HasContent, FinalHasContent)-->
         [Code],
-        read_until_open_tag(Codes).
+        {(code_type(Code, space)->
+           NowHasContent = HasContent
+         ; NowHasContent = true
+         )},
+        read_until_open_tag(Codes, NowHasContent, FinalHasContent).
 
 
 read_until_close_paren(T, T, 1, [41|C], [41|C]):- !.
