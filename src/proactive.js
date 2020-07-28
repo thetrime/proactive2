@@ -51,6 +51,7 @@ Proactive = {render: function(url, module, container)
                      Prolog.define_foreign("media_size", require('./media_size'));
                      Prolog.define_foreign("get_ticks", require('./get_ticks'));
                      Prolog.define_foreign("bubble_event", require('./bubble_event'));
+                     Prolog.define_foreign("t7_now", require('./t7_now'));
                      Prolog.consult_url(url + "boilerplate.pl", function() {});
                      Prolog.consult_url(url + "component/" + module, function()
                                         {
