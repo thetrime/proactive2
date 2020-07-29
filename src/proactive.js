@@ -356,13 +356,40 @@ Proactive = {render: function(url, module, container)
                                  {
                                      // This is a Bootstrap class. We want to convert the attributes to an object where each entry is of the form
                                      // <string> : <JSValue>
+                                     // In addition to the DOM version, we also make a few extra conversions here, handling class(Path) and selector(Reference)
                                      var attributes = {};
                                      PrologUtilities.forEachAttribute(Prolog.term_arg(Term, 1), function(name, Value)
                                                                       {
                                                                           if (name.startsWith('on'))
                                                                               attributes[name] = this.makeEventHandler(Value);
+                                                                          else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.selectorFunctor)
+                                                                          {
+                                                                              var selector = Prolog.atom_chars(Prolog.term_arg(Value, 0));
+                                                                              attributes[name] = function() { return document.querySelector(selector); };
+                                                                          }
+                                                                          else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.booleanFunctor)
+                                                                          {
+                                                                              attributes[name] = Prolog.atom_chars(Prolog.term_arg(Value, 0)) == "true";
+                                                                          }
+                                                                          else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.classFunctor)
+                                                                          {
+                                                                              var ClassName = Prolog.term_arg(Value, 0);
+                                                                              var path;
+                                                                              if (Prolog.is_atom(ClassName))
+                                                                              {
+                                                                                  path = Prolog.atom_chars(ClassName);
+                                                                              }
+                                                                              else if (Prolog.is_compound(ClassName) && Prolog.term_functor(ClassName) == Constants.listFunctor)
+                                                                              {
+                                                                                  path = [];
+                                                                                  Prolog.forEach(ClassName, function(i) { path.push(Prolog.atom_chars(i)); }, function(e) { console.log("Bad list in class: " + Prolog.portray(e));});
+                                                                              }
+                                                                              attributes[name] = getBootstrapElement(path);
+                                                                          }
                                                                           else
+                                                                          {
                                                                               attributes[name] = PrologUtilities.prologToJSValue(Value);
+                                                                          }
                                                                       }.bind(this));
                                      return React.createElement.apply(this, [getBootstrapElement(tag), attributes].concat(children));
                                  }

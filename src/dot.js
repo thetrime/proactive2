@@ -50,7 +50,6 @@ module.exports = function(State, Key, Value)
         while (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.dictFunctor)
         {
             var Head = Prolog.term_arg(Term, 0);
-            console.log("Head is " + Prolog.portray(Head));
             Term = Prolog.term_arg(Term, 1);
             if (Prolog.unify(Key, Prolog.term_arg(Head, 0)))
                 return Prolog.unify(Value, Prolog.term_arg(Head, 1));
