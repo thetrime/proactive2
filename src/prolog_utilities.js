@@ -215,6 +215,11 @@ function forEachDictEntry(Dict, fn)
     var Term = Prolog.term_arg(Dict, 1);
     if (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.curlyFunctor)
         Term = Prolog.term_arg(Term, 0);
+    else if (Term == Constants.emptyCurlyAtom)
+    {
+        // No entries, no problems.
+        return;
+    }
     else
     {
         console.log("Not a {}/1: " + Prolog.portray(Term));
@@ -225,6 +230,8 @@ function forEachDictEntry(Dict, fn)
 
 function forEachCurlyEntry(Term, fn)
 {
+    if (Term == Constants.emptyCurlyAtom)
+        return;
     while (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.commaFunctor)
     {
         var Head = Prolog.term_arg(Term, 0);
@@ -248,11 +255,50 @@ function forEachCurlyEntry(Term, fn)
         console.log("Bad pair in forEachDictEntry");
 };
 
+// This is pretty inefficient, but dicts tend to be relatively small. If we ever get any really big ones, consider
+// refactoring this to build an intermediate hashmap. That will eliminate the inner loop, making it O(3n) rather than O(n*n)
+function mergeDicts(oldDict, newDict)
+{
+    var resultEntries = oldDict.dict.entries;
+    var keys = [];
+    for (var i = 0; i < resultEntries.length; i++)
+    {
+        keys.push(resultEntries[i].name);
+        for (var j = 0; j < newDict.dict.entries.length; j++)
+        {
+            if (resultEntries[i].name == newDict.dict.entries[j].name)
+            {
+                // Replace old with new.... unless the values are also both dicts
+                if (resultEntries[i].value !== null &&
+                    resultEntries[i].value.dict !== undefined &&
+                    newDict.dict.entries[j].value !== null &&
+                    newDict.dict.entries[j].value.dict !== undefined)
+                    resultEntries[i].value = mergeDicts(resultEntries[i].value, newDict.dict.entries[j].value);
+                else
+                    resultEntries[i].value = newDict.dict.entries[j].value;
+                break;
+            }
+        }
+    }
+    // Finally, add in all the new entries
+    for (var j = 0; j < newDict.dict.entries.length; j++)
+    {
+        if (!keys.includes(newDict.dict.entries[j].name))
+        {
+            resultEntries.push(newDict.dict.entries[j]);
+        }
+    }
+
+    return {dict: {tag: oldDict.dict.tag,
+                   entries: resultEntries}};
+}
+
 
 module.exports = {jsToProlog: jsToProlog,
                   Null: Null,
                   prologToPrologValue: prologToPrologValue,
                   prologToJSValue: prologToJSValue,
+                  mergeDicts: mergeDicts,
                   forEachAttribute: forEachAttribute,
                   forEachDictEntry: forEachDictEntry,
                   forEachCurlyEntry: forEachCurlyEntry,

@@ -482,8 +482,25 @@ Proactive = {render: function(url, module, container)
                                                                        newState[name] = PrologUtilities.prologToPrologValue(Value);
                                                                    });
                              }
-                             this.setState(newState);
-
+                             // React merges states, but the merge is shallow, meaning that if we have any dicts in the old state they will just get clobbered by the new.
+                             // This means we have to be a bit clever
+                             this.setState((prevState) =>
+                                           {
+                                               var keys = Object.keys(prevState);
+                                               for (var i = 0; i < keys.length; i++)
+                                               {
+                                                   var key = keys[i];
+                                                   if (prevState[key] !== null &&
+                                                       prevState[key].dict !== undefined &&
+                                                       newState[key] !== undefined &&
+                                                       newState[key] !== null &&
+                                                       newState[key].dict !== undefined)
+                                                   {
+                                                       newState[key] = PrologUtilities.mergeDicts(prevState[key], newState[key]);
+                                                   }
+                                               }
+                                               return newState;
+                                           });
                          }
 
                          makeEventHandler(Term)
