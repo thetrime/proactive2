@@ -13,7 +13,7 @@ render(State, _Props, Form):-
                 ),
                 Widgets),
         {|jsx(Form)||
-        <div style={width: '200px', height: '200px', background: 'red'}>
+        <div style={_{width: '200px', height: '200px', background: 'red'}}>
           This is a test: {State.counter}
           {Widgets}
           <bar cat="zin" cog={Unbound} islay="chonk" test={splunge}/>
@@ -22,16 +22,20 @@ render(State, _Props, Form):-
           <MessageListener class="test_message" discriminator={my_discriminator} onMessage={this.onMessage}/>
           <Button onClick={someEvent}>Click me!</Button>
         </div>|},
-        writeln(state=State.input_data).
+        writeln(input_data=State.input_data),
+        writeln(dict=State.a_dict),
+        writeln(tricky=State.a_dict.van).
 
 
-getInitialState(_, {counter: X,
-                    input_data: 'cat'}):-
+getInitialState(_, _{counter: X,
+                     input_data: 'cat',
+                     a_dict: _{van: blue,
+                               tree: large}}):-
         on_server(get_counter(X)).
 
 get_counter(3).
 
-someEvent(_Event, State, _Props, {counter: NewCounter}):-
+someEvent(_Event, State, _Props, _{counter: NewCounter}):-
         findall(X,
                 on_server(??member(X, [a,b,c,State])),
                 Xs),
@@ -39,15 +43,15 @@ someEvent(_Event, State, _Props, {counter: NewCounter}):-
         NewCounter is State.counter + 1.
 
 
-splunge(_Event, _State, _Props, {islay: squashed}):-
+splunge(_Event, _State, _Props, _{islay: squashed}):-
         on_server(writeln(foo)).
 
-ftang(Event, _State, _Props, {input_data: Value}):-
+ftang(Event, _State, _Props, _{input_data: Value}):-
         writeln(got_event(Event)),
         memberchk(value=Value, Event).
 
 
-onMessage(Event, _State, _Props, {input_data: Data}):-
+onMessage(Event, _State, _Props, _{input_data: Data}):-
         writeln(message_received(Event)),
         ??memberchk(baz=Data, Event).
 

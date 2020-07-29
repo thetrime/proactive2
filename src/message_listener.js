@@ -14,10 +14,10 @@ function makeMessageHandler(Term, module)
         target = Prolog.get_blob("widget", Blob);
         Term = Prolog.term_arg(Term, 1);
     }
-    var handler = PrologUtilities.prologToJS(Term);
+    var handler = PrologUtilities.prologToPrologValue(Term);
     return function(Message)
     {
-        target.processEvent(handler, PrologUtilities.prologToJS(Message));
+        target.processEvent(handler, PrologUtilities.prologToPrologValue(Message));
     }
 }
 
@@ -49,10 +49,10 @@ module.exports = function(MessageService)
                     }
                     else if (name == "discriminator")
                     {
-                        map["discriminator"] = {compound: {name: ":", args: [{atom: module}, PrologUtilities.prologToJS(Value)]}};
+                        map["discriminator"] = {compound: {name: ":", args: [{atom: module}, PrologUtilities.prologToPrologValue(Value)]}};
                     }
                     else
-                        map[name] = PrologUtilities.prologToJS(Value);
+                        map[name] = PrologUtilities.prologToPrologValue(Value);
                 }
             }
             return map;

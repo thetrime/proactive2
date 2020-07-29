@@ -35,16 +35,22 @@ module.exports = function(State, Key, Value)
         }
     }
     // Also handle the case where we use . with a {} term from an internally-generated state
-    else if (State == Constants.emptyCurlyAtom)
+    if (State == Constants.emptyCurlyAtom)
         return Null(Value);
-    else if (Prolog.is_compound(State) && Prolog.term_functor(State) == Constants.curlyFunctor)
+    if (Prolog.is_dict(State))
     {
-        if (Prolog.term_arg(State, 0) == Constants.nullAtom)
+        State = Prolog.term_arg(State, 1);
+        // Then try again
+    }
+    if (Prolog.is_compound(State) && Prolog.term_functor(State) == Constants.curlyFunctor)
+    {
+        var Term = Prolog.term_arg(State, 0);
+        if (Term == Constants.nullAtom)
             return Null(Value);
-        var Term = State;
         while (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.dictFunctor)
         {
             var Head = Prolog.term_arg(Term, 0);
+            console.log("Head is " + Prolog.portray(Head));
             Term = Prolog.term_arg(Term, 1);
             if (Prolog.unify(Key, Prolog.term_arg(Head, 0)))
                 return Prolog.unify(Value, Prolog.term_arg(Head, 1));
@@ -58,7 +64,4 @@ module.exports = function(State, Key, Value)
         return Null(Value);
     }
     return Errors.typeError(Constants.prologStateAtom, State);
-
-    throw new Error("Oops2");
-    return 0;
 }

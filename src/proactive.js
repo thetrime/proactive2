@@ -52,44 +52,46 @@ Proactive = {render: function(url, module, container)
                      Prolog.define_foreign("get_ticks", require('./get_ticks'));
                      Prolog.define_foreign("bubble_event", require('./bubble_event'));
                      Prolog.define_foreign("t7_now", require('./t7_now'));
-                     Prolog.consult_url(url + "boilerplate.pl", function() {});
-                     Prolog.consult_url(url + "component/" + module, function()
+                     Prolog.consult_url(url + "boilerplate.pl", function()
                                         {
-                                            var checkpoint = Prolog.save_state();
-                                            var Components = Prolog.make_variable();
-                                            var Goal = Prolog.make_compound(Prolog.make_functor(Prolog.make_atom("get_components"), 1), [Components]);
-                                            // Note that we cannot us callSynchronously() here because that is a method of React.Component, and we are just in Proactive here
-                                            // Fortunately, we dont need to clean much up - get_components/1 does not create any blobs
-                                            var rc = Prolog.call({}, Goal);
-                                            var newClasses = {};
-                                            if (rc == 1)
-                                            {
-                                                var modules = [];
-                                                Prolog.forEach(Components,
-                                                               function(Module)
+                                            Prolog.consult_url(url + "component/" + module, function()
                                                                {
-                                                                   modules.push(Prolog.atom_chars(Module));
-                                                               },
-                                                               function() {}
-                                                              );
-                                                Prolog.restore_state(checkpoint);
-                                                for (var i = 0; i < modules.length; i++)
-                                                {
-                                                    if (this.classes[modules[i]] == undefined)
-                                                        newClasses[modules[i]] = defineProactiveComponent(modules[i]);
-                                                    else
-                                                        newClasses[modules[i]] = this.classes[modules[i]];
-                                                };
-                                                this.classes = newClasses;
-                                                ReactDOM.render(React.createElement(classes[module], null, []), container);
-                                            }
-                                            else if (rc == 4)
-                                            {
-                                                console.log("Exception getting components:" + Prolog.portray(Prolog.get_exception()));
-                                            }
-                                            else
-                                                console.log("Failed to get components: " + rc);
+                                                                   var checkpoint = Prolog.save_state();
+                                                                   var Components = Prolog.make_variable();
+                                                                   var Goal = Prolog.make_compound(Prolog.make_functor(Prolog.make_atom("get_components"), 1), [Components]);
+                                                                   // Note that we cannot us callSynchronously() here because that is a method of React.Component, and we are just in Proactive here
+                                                                   // Fortunately, we dont need to clean much up - get_components/1 does not create any blobs
+                                                                   var rc = Prolog.call({}, Goal);
+                                                                   var newClasses = {};
+                                                                   if (rc == 1)
+                                                                   {
+                                                                       var modules = [];
+                                                                       Prolog.forEach(Components,
+                                                                                      function(Module)
+                                                                                      {
+                                                                                          modules.push(Prolog.atom_chars(Module));
+                                                                                      },
+                                                                                      function() {}
+                                                                                     );
+                                                                       Prolog.restore_state(checkpoint);
+                                                                       for (var i = 0; i < modules.length; i++)
+                                                                       {
+                                                                           if (this.classes[modules[i]] == undefined)
+                                                                               newClasses[modules[i]] = defineProactiveComponent(modules[i]);
+                                                                           else
+                                                                               newClasses[modules[i]] = this.classes[modules[i]];
+                                                                       };
+                                                                       this.classes = newClasses;
+                                                                       ReactDOM.render(React.createElement(classes[module], null, []), container);
+                                                                   }
+                                                                   else if (rc == 4)
+                                                                   {
+                                                                       console.log("Exception getting components:" + Prolog.portray(Prolog.get_exception()));
+                                                                   }
+                                                                   else
+                                                                       console.log("Failed to get components: " + rc);
 
+                                                               });
                                         });
                  }
                  make();
@@ -285,11 +287,6 @@ Proactive = {render: function(url, module, container)
                                                      }.bind(this));
                          }
 
-                         make_dict(data)
-                         {
-                             return Prolog.make_blob("dict", {portray: PrologUtilities.portray_dict, data: data});
-                         }
-
                          render()
                          {
                              if (!this.mounted)
@@ -301,7 +298,7 @@ Proactive = {render: function(url, module, container)
                                                                {
                                                                    case  2: console.log("Warning: render/3 was nondet"); /* Fall through */
                                                                    case  1: return this.listToDOM(Prolog.deref(Form), [])
-                                                                   case  4: console.log("Exception in render/3:" + Prolog.portray(Prolog.get_exception())); /* Fall through */
+                                                                   case  4: console.log("Exception in render/3:\n" + Prolog.portray(Prolog.get_exception())); /* Fall through */
                                                                    default: return React.createElement('div', null, `Failed to render component`);
                                                                }
                                                            });
@@ -346,20 +343,41 @@ Proactive = {render: function(url, module, container)
                                  }
                                  if (classes[tag] !== undefined)
                                  {
-                                     // This is a Prolog-defined Proactive class
-                                     var attributes = this.attributesToJS(Prolog.term_arg(Term, 1), true);
+                                     // This is a Prolog-defined Proactive class. We want to convert the attributes to an object where each entry is of the form
+                                     // <string> : <PrologValue>
+                                     var attributes = {};
+                                     PrologUtilities.forEachAttribute(Prolog.term_arg(Term, 1), function(name, Value)
+                                                                      {
+                                                                          attributes[name] = PrologUtilities.prologToPrologValue(Value);
+                                                                      });
                                      return React.createElement.apply(this, [classes[tag], attributes].concat(children));
                                  }
                                  else if (getBootstrapElement(tag) !== undefined)
                                  {
-                                     // This is a Bootstrap object
-                                     var attributes = this.attributesToJS(Prolog.term_arg(Term, 1));
+                                     // This is a Bootstrap class. We want to convert the attributes to an object where each entry is of the form
+                                     // <string> : <JSValue>
+                                     var attributes = {};
+                                     PrologUtilities.forEachAttribute(Prolog.term_arg(Term, 1), function(name, Value)
+                                                                      {
+                                                                          if (name.startsWith('on'))
+                                                                              attributes[name] = this.makeEventHandler(Value);
+                                                                          else
+                                                                              attributes[name] = PrologUtilities.prologToJSValue(Value);
+                                                                      }.bind(this));
                                      return React.createElement.apply(this, [getBootstrapElement(tag), attributes].concat(children));
                                  }
                                  else
                                  {
-                                     // This is a plain old HTML object
-                                     var attributes = this.attributesToJS(Prolog.term_arg(Term, 1));
+                                     // This is a plain old HTML object. We want to convert the attributes to an object where each entry is of the form
+                                     // <string> : <JSValue>
+                                     var attributes = {};
+                                     PrologUtilities.forEachAttribute(Prolog.term_arg(Term, 1), function(name, Value)
+                                                                      {
+                                                                          if (name.startsWith('on'))
+                                                                              attributes[name] = this.makeEventHandler(Value);
+                                                                          else
+                                                                              attributes[name] = PrologUtilities.prologToJSValue(Value);
+                                                                      }.bind(this));
                                      return React.createElement.apply(this, [tag, attributes].concat(children));
                                  }
                              }
@@ -384,77 +402,6 @@ Proactive = {render: function(url, module, container)
                              return null;
                          }
 
-                         attributesToJS(Term, pure)
-                         {
-                             var map = {};
-                             while (Prolog.is_compound(Term) && Prolog.term_functor(Term) == Constants.listFunctor)
-                             {
-                                 var Head = Prolog.term_arg(Term, 0);
-                                 Term = Prolog.term_arg(Term, 1);
-                                 if (Prolog.is_compound(Head) && Prolog.term_functor(Head) == Constants.equalsFunctor)
-                                 {
-                                     var name = Prolog.atom_chars(Prolog.term_arg(Head, 0));
-                                     var Value = Prolog.term_arg(Head, 1);
-                                     if (pure)
-                                     {
-                                         map[name] = PrologUtilities.prologToJS(Value);
-                                     }
-                                     else if (isEventHandler(name))
-                                     {
-                                         map[name] = this.makeEventHandler(Value);
-                                     }
-                                     else if (Prolog.is_atom(Value))
-                                     {
-                                         map[name] = Prolog.atom_chars(Value);
-                                     }
-                                     else if (Prolog.is_integer(Value) || Prolog.is_float(Value))
-                                     {
-                                         map[name] = Prolog.numeric_value(Value);
-                                     }
-                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.selectorFunctor)
-                                     {
-                                         var selector = Prolog.atom_chars(Prolog.term_arg(Value, 0));
-                                         map[name] = function() { return document.querySelector(selector); };
-                                     }
-                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.booleanFunctor)
-                                     {
-                                         map[name] = Prolog.atom_chars(Prolog.term_arg(Value, 0)) == "true";
-                                     }
-                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.classFunctor)
-                                     {
-                                         var ClassName = Prolog.term_arg(Value, 0);
-                                         var path;
-                                         if (Prolog.is_atom(ClassName))
-                                         {
-                                             path = Prolog.atom_chars(ClassName);
-                                         }
-                                         else if (Prolog.is_compound(ClassName) && Prolog.term_functor(ClassName) == Constants.listFunctor)
-                                         {
-                                             path = [];
-                                             Prolog.forEach(ClassName, function(i) { path.push(Prolog.atom_chars(i)); }, function(e) { console.log("Bad list in class: " + Prolog.portray(e));});
-                                         }
-                                         map[name] = getBootstrapElement(path);
-                                     }
-                                     else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.curlyFunctor)
-                                     {
-                                         // Native dictionary object such as style={{foo: bar, baz: qux}}
-                                         map[name] = PrologUtilities.dictEntriesToJS(Prolog.term_arg(Value, 0), PrologUtilities.prologToJSNative);
-                                     }
-                                     else if (Prolog.is_compound(Value))
-                                     {
-                                         map[name] = PrologUtilities.prologToJS(Value);
-                                     }
-                                     else
-                                     {
-                                         console.log("Unhandled attribute value: " + Prolog.portray(Value));
-                                     }
-                                 }
-                             }
-                             if (Term != Constants.emptyListAtom)
-                                 console.log("Bad list in attributesToJS");
-                             return map;
-                         }
-
                          processEvent(handler, event)
                          {
                              this.queueEvent(handler, function(NewState) { return [PrologUtilities.jsToProlog(event), this.state, this.props, NewState]}.bind(this));
@@ -471,9 +418,9 @@ Proactive = {render: function(url, module, container)
                                                              event.afterEvent(success);
                                                          if (success)
                                                          {
-                                                             var newState = PrologUtilities.prologToJS(Prolog.deref(NewState));
-                                                             // This may trigger an event, but it must be synchronous
-                                                             this.setState(newState);
+                                                             // This may trigger a Prolog goal (ie render/3), but it must be synchronous so when it is done we know
+                                                             // that the WAM is in the same state as it was before we called it
+                                                             this.setPrologState(NewState);
                                                          }
                                                          Prolog.restore_state(checkpoint);
                                                          if (pendingEvents.length == 0)
@@ -481,6 +428,35 @@ Proactive = {render: function(url, module, container)
                                                          else
                                                              dispatchGlobalEvent();
                                                      });
+                         }
+
+                         setPrologState(NewState)
+                         {
+                             // This is a convenience function to set the state based on a Prolog value rather than a JS Object
+                             // Once it exits, it does not hold any references to NewState
+                             // It is guaranteed to leave the WAM in the same state it was in when it started - all goals called are synchronous
+                             var newState = {};
+                             NewState = Prolog.deref(NewState);
+                             if (Prolog.is_dict(NewState))
+                             {
+                                 PrologUtilities.forEachDictEntry(NewState, function(name, Value)
+                                                                  {
+                                                                      newState[name] = PrologUtilities.prologToPrologValue(Value);
+                                                                  });
+                             }
+                             else if (Prolog.is_compound(NewState) && Prolog.term_functor(NewState) == Constants.curlyFunctor)
+                             {
+                                 // Perhaps this should not be allowed. It lets you write an output state as either:
+                                 //   * a dict, as in _{foo: bar, ...}
+                                 //   * a curly, as in {foo: bar, ...}
+                                 // which is flexbile, but perhaps more rope than we want
+                                 PrologUtilities.forEachCurlyEntry(NewState, function(name, Value)
+                                                                   {
+                                                                       newState[name] = PrologUtilities.prologToPrologValue(Value);
+                                                                   });
+                             }
+                             this.setState(newState);
+
                          }
 
                          makeEventHandler(Term)
@@ -492,7 +468,7 @@ Proactive = {render: function(url, module, container)
                                  target = Prolog.get_blob("widget", Blob);
                                  Term = Prolog.term_arg(Term, 1);
                              }
-                             var handler = PrologUtilities.prologToJS(Term);
+                             var handler = PrologUtilities.prologToPrologValue(Term);
                              return function(e)
                              {
                                  this.processEvent(handler, PrologUtilities.make_event(e));

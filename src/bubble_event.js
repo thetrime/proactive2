@@ -47,7 +47,7 @@ module.exports = function(Handler, Event)
     }
 
     /* This MIGHT be more suitable
-    target.processEvent(PrologUtilities.prologToJS(Handler), PrologUtilities.prologToJS(Event));
+    target.processEvent(PrologUtilities.prologToPrologValue(Handler), PrologUtilities.prologToPrologValue(Event));
     return 1;
     */
 
@@ -56,7 +56,7 @@ module.exports = function(Handler, Event)
     target.callAsynchronously(target.module, Handler, [Event, target.state, target.props, NewState], function(rc)
                               {
                                   if (rc)
-                                      target.setState(PrologUtilities.prologToJS(Prolog.deref(NewState)));
+                                      target.setPrologState(NewState);
                                   Prolog.restore_state(checkpoint);
                                   resume(rc);
                               });

@@ -10,6 +10,7 @@ module.exports = {getInitialStateFunctor: Prolog.make_functor(Prolog.make_atom("
                   equalsFunctor: Prolog.make_functor(Prolog.make_atom("="), 2),
                   listFunctor: Prolog.make_functor(Prolog.make_atom("."), 2),
                   dictFunctor: Prolog.make_functor(Prolog.make_atom(","), 2),
+                  commaFunctor: Prolog.make_functor(Prolog.make_atom(","), 2),
                   dictPairFunctor: Prolog.make_functor(Prolog.make_atom(":"), 2),
                   errorFunctor: Prolog.make_functor(Prolog.make_atom("error"), 1),
                   typeErrorFunctor: Prolog.make_functor(Prolog.make_atom("type_error"), 2),
