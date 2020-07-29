@@ -319,7 +319,10 @@ module.exports = {jsToProlog: jsToProlog,
                   {
                       if (e instanceof Array)
                       {
-                          return {list: [{compound: {name: "=", args: [{atom: "value"}, {list: e}]}}]};
+                          var values = [];
+                          for (var i = 0 ; i < e.length; i++)
+                              values.push({atom: e[i]});
+                          return {list: [{compound: {name: "=", args: [{atom: "value"}, {list: values}]}}]};
                       }
                       if (e.target.value === undefined)
                           return {list: []};
