@@ -317,6 +317,10 @@ module.exports = {jsToProlog: jsToProlog,
                   },
                   make_event: function(e)
                   {
+                      if (e instanceof Array)
+                      {
+                          return {list: [{compound: {name: "=", args: [{atom: "value"}, {list: e}]}}]};
+                      }
                       if (e.target.value === undefined)
                           return {list: []};
                       else
