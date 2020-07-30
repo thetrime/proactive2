@@ -188,13 +188,6 @@ jsx_children(Dict, [Element|Elements], Goal, GoalTail, Singletons, SingletonsTai
         !,
         jsx_children(Dict, Elements, G1, GoalTail, S1, SingletonsTail).
 
-/*
-jsx_children(Dict, [Element|Elements], Goal, GoalTail, Singletons, SingletonsTail)-->
-        jsx_text_node(Dict, Element, _HasContent),
-        !,
-        jsx_children(Dict, Elements, Goal, GoalTail, Singletons, SingletonsTail).
-*/
-
 jsx_children(Dict, Result, Goal, GoalTail, Singletons, SingletonsTail)-->
         jsx_text_node(Dict, Element, HasContent),
         {(HasContent == false->
@@ -230,9 +223,13 @@ jsx_attributes(Dict, [Name=Value|Attributes], Goals, GoalsTail)-->
         ).
 jsx_attributes(_, [], G, G)--> [].
 
-% read_until_open_tag//1 reads until we hit either < or {r
+% read_until_open_tag//1 reads until we hit either < or {
 read_until_open_tag([], HasContent, HasContent, [60|C], [60|C]):- !.
 read_until_open_tag([], HasContent, HasContent, [123|C], [123|C]):- !.
+read_until_open_tag(Codes, HasContent, FinalHasContent)-->
+        comment,
+        !,
+        read_until_open_tag(Codes, HasContent, FinalHasContent).
 read_until_open_tag([Code|Codes], HasContent, FinalHasContent)-->
         [Code],
         {(code_type(Code, space)->
