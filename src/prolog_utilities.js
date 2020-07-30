@@ -324,9 +324,42 @@ module.exports = {jsToProlog: jsToProlog,
                               values.push({atom: e[i]});
                           return {list: [{compound: {name: "=", args: [{atom: "value"}, {list: values}]}}]};
                       }
-                      if (e.target.value === undefined)
-                          return {list: []};
-                      else
+                      if (e.target !== undefined && e.target.value !== undefined)
+                      {
                           return {list: [{compound: {name: "=", args: [{atom: "value"}, {atom: e.target.value}]}}]};
+                      }
+                      else if (typeof e == "string")
+                      {
+                          return {atom: e};
+                      }
+                      else
+                      {
+                          // Do our best
+                          window.qqq = e;
+                          var keys = Object.keys(e);
+                          var list = [];
+                          for (var i = 0; i < keys.length; i++)
+                          {
+                              var object = e[keys[i]];
+                              var value = null;
+                              if (object instanceof Date)
+                              {
+                                  value = {compound: {name: "date",
+                                                      args: [{integer: object.getFullYear()},
+                                                             {integer: object.getMonth() + 1},
+                                                             {integer: object.getDate()},
+                                                             {integer: object.getHours()},
+                                                             {integer: object.getMinutes()},
+                                                             {integer: object.getSeconds()},
+                                                             {integer: object.getMilliseconds()}]}};
+                              }
+                              else
+                              {
+                                  value = {atom: object.toString()};
+                              }
+                              list.push({compound: {name: "=", args: [{atom: keys[i]}, value]}});
+                          }
+                          return {list: list};
+                      }
                   }
                  };

@@ -7,9 +7,9 @@ function isEventHandler(e)
     return e.startsWith("on");
 }
 
-function getBootstrapElement(e)
+function getExternalComponent(e)
 {
-    var o = ReactBootstrap;
+    var o = externalClasses;
     if (e instanceof Array)
     {
         for (var i = 0; i < e.length; i++)
@@ -26,6 +26,7 @@ function getBootstrapElement(e)
 
 var pendingEvents = [];
 var currentlyProcessingEvents = false;
+var externalClasses = {};
 
 function dispatchGlobalEvent()
 {
@@ -34,13 +35,19 @@ function dispatchGlobalEvent()
     event.caller.dispatchAnEvent(event);
 }
 
-Proactive = {render: function(url, module, container)
+Proactive = {installComponents: function(object)
+             {
+                 Object.assign(externalClasses, object);
+                 console.log("Installed. Classes are now:");
+                 console.log(externalClasses);
+             },
+             render: function(url, module, container)
              {
                  console.log("Welcome to Proactive 2.0");
                  var Constants = require('./constants');
                  var PrologUtilities = require('./prolog_utilities');
                  var MessageService = require('./message_service');
-                 classes = {};
+                 proactiveClasses = {};
                  specials = {'MessageListener': require('./message_listener')(MessageService)};
                  function make()
                  {
@@ -76,13 +83,13 @@ Proactive = {render: function(url, module, container)
                                                                        Prolog.restore_state(checkpoint);
                                                                        for (var i = 0; i < modules.length; i++)
                                                                        {
-                                                                           if (this.classes[modules[i]] == undefined)
+                                                                           if (this.proactiveClasses[modules[i]] == undefined)
                                                                                newClasses[modules[i]] = defineProactiveComponent(modules[i]);
                                                                            else
-                                                                               newClasses[modules[i]] = this.classes[modules[i]];
+                                                                               newClasses[modules[i]] = this.proactiveClasses[modules[i]];
                                                                        };
-                                                                       this.classes = newClasses;
-                                                                       ReactDOM.render(React.createElement(classes[module], null, []), container);
+                                                                       this.proactiveClasses = newClasses;
+                                                                       ReactDOM.render(React.createElement(proactiveClasses[module], null, []), container);
                                                                    }
                                                                    else if (rc == 4)
                                                                    {
@@ -344,7 +351,7 @@ Proactive = {render: function(url, module, container)
                                  {
                                      return React.createElement(specials[tag], specials[tag].attributesToJS(module, Prolog.term_arg(Term, 1)), 0);
                                  }
-                                 if (classes[tag] !== undefined)
+                                 if (proactiveClasses[tag] !== undefined)
                                  {
                                      // This is a Prolog-defined Proactive class. We want to convert the attributes to an object where each entry is of the form
                                      // <string> : <PrologValue>
@@ -353,11 +360,11 @@ Proactive = {render: function(url, module, container)
                                                                       {
                                                                           attributes[name] = PrologUtilities.prologToPrologValue(Value);
                                                                       });
-                                     return React.createElement.apply(this, [classes[tag], attributes].concat(children));
+                                     return React.createElement.apply(this, [proactiveClasses[tag], attributes].concat(children));
                                  }
-                                 else if (getBootstrapElement(tag) !== undefined)
+                                 else if (getExternalComponent(tag) !== undefined)
                                  {
-                                     // This is a Bootstrap class. We want to convert the attributes to an object where each entry is of the form
+                                     // This is an external class. We want to convert the attributes to an object where each entry is of the form
                                      // <string> : <JSValue>
                                      // In addition to the DOM version, we also make a few extra conversions here, handling class(Path) and selector(Reference)
                                      var attributes = {};
@@ -374,6 +381,16 @@ Proactive = {render: function(url, module, container)
                                                                           {
                                                                               attributes[name] = Prolog.atom_chars(Prolog.term_arg(Value, 0)) == "true";
                                                                           }
+                                                                          else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.dateFunctor)
+                                                                          {
+                                                                              attributes[name] = new Date(Prolog.numeric_value(Prolog.term_arg(Value, 0)),
+                                                                                                          Prolog.numeric_value(Prolog.term_arg(Value, 1)) - 1,
+                                                                                                          Prolog.numeric_value(Prolog.term_arg(Value, 2)),
+                                                                                                          Prolog.numeric_value(Prolog.term_arg(Value, 3)),
+                                                                                                          Prolog.numeric_value(Prolog.term_arg(Value, 4)),
+                                                                                                          Prolog.numeric_value(Prolog.term_arg(Value, 5)),
+                                                                                                          Prolog.numeric_value(Prolog.term_arg(Value, 6)));
+                                                                          }
                                                                           else if (Prolog.is_compound(Value) && Prolog.term_functor(Value) == Constants.classFunctor)
                                                                           {
                                                                               var ClassName = Prolog.term_arg(Value, 0);
@@ -387,14 +404,14 @@ Proactive = {render: function(url, module, container)
                                                                                   path = [];
                                                                                   Prolog.forEach(ClassName, function(i) { path.push(Prolog.atom_chars(i)); }, function(e) { console.log("Bad list in class: " + Prolog.portray(e));});
                                                                               }
-                                                                              attributes[name] = getBootstrapElement(path);
+                                                                              attributes[name] = getExternalComponent(path);
                                                                           }
                                                                           else
                                                                           {
                                                                               attributes[name] = PrologUtilities.prologToJSValue(Value);
                                                                           }
                                                                       }.bind(this));
-                                     return React.createElement.apply(this, [getBootstrapElement(tag), attributes].concat(children));
+                                     return React.createElement.apply(this, [getExternalComponent(tag), attributes].concat(children));
                                  }
                                  else
                                  {

@@ -32,5 +32,6 @@ module.exports = {getInitialStateFunctor: Prolog.make_functor(Prolog.make_atom("
                   booleanFunctor: Prolog.make_functor(Prolog.make_atom("boolean"), 1),
                   selectorFunctor: Prolog.make_functor(Prolog.make_atom("selector"), 1),
                   prologStateAtom: Prolog.make_atom("state"),
+                  dateFunctor: Prolog.make_functor(Prolog.make_atom("date"), 7),
                   t7Functor: Prolog.make_functor(Prolog.make_atom("t7"), 7)};
 

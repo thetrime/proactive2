@@ -284,6 +284,9 @@ send_reply(WebSocket, Term):-
 	ws_send(WebSocket, text(Text)).
 
 
+:-multifile(proactive_component_hook/2).
+% Define proactive_component_hook/2 clauses to extend the objects available in Proactive
+% FIXME: Implement this. Add extra args to Proactive.installComponents() and extra CSS/Javascript to the body
 
 serve_proactive_form(FormId, Request):-
         ( predicate_property(proactive:allow_access_to_form(_), number_of_clauses(_))->
@@ -300,7 +303,7 @@ serve_proactive_form(FormId, Request):-
         parse_url(URL, [path(Path)|R1]),
         http_absolute_location(proactive('lib/proactive.js'), LibPath, []),
 
-        format(atom(Bootstrap), 'window.onPrologReady = function() {Proactive.render("~w", "~w", document.getElementById("container"));}; if (window.prologReady) {console.log("Prolog already ready. Booting proactive"); window.onPrologReady();}', [URL, FormId]),
+        format(atom(Bootstrap), 'window.onPrologReady = function() {Proactive.installComponents(ReactBootstrap); Proactive.installComponents({Datetime: Datetime}); Proactive.render("~w", "~w", document.getElementById("container"));}; if (window.prologReady) {console.log("Prolog already ready. Booting proactive"); window.onPrologReady();}', [URL, FormId]),
 
         % Change development -> production.min to get minified version
         HTML = element(html, [], [element(head, [], [element(script, [src='https://unpkg.com/react/umd/react.development.js', crossorigin=anonymous], []),
@@ -312,6 +315,19 @@ serve_proactive_form(FormId, Request):-
                                                                     crossorigin=anonymous], [])]),
                                   element(body, [], [element(div, [id=container], []),
                                                      element(script, [src='https://unpkg.com/react-bootstrap@next/dist/react-bootstrap.js', crossorigin=anonymous], []),
+
+                                                     % This looks nicer but is very hard to serve from a CDN
+                                                     %element(script, [src='https://unpkg.com/prop-types@15.7.2/prop-types.min.js', crossorigin=anonymous], []),
+                                                     %element(script, [src='https://unpkg.com/react-onclickoutside@6.9.0/dist/react-onclickoutside.min.js', crossorigin=anonymous], []),
+                                                     %element(script, [src='https://cdn.date-fns.org/v2.0.0-alpha0/date_fns.min.js', crossorigin=anonymous], []),
+                                                     %element(script, [src='https://unpkg.com/react-datepicker@2.16/dist/react-datepicker.min.js', crossorigin=anonymous], []),
+
+
+                                                     % react-datetime and dependencies
+                                                     element(script, [src='https://unpkg.com/moment@2.27.0/min/moment.min.js', crossorigin=anonymous], []),
+                                                     element(script, [src='https://unpkg.com/react-datetime@2.16.3/dist/react-datetime.min.js', crossorigin=anonymous], []),
+                                                     element(link, [rel=stylesheet, href='https://unpkg.com/react-datetime@2.16.3/css/react-datetime.css'], []),
+
                                                      element(script, [type='text/javascript'], [Bootstrap])])]),
         format(current_output, 'Content-type: text/html~n~n', []),
         html_write(current_output, HTML, []).
@@ -436,3 +452,4 @@ user:bubble_event(_, Event):-
 user:bubble_event(_, _, Event):-
         permission_error(handle, event, Event).
 user:media_size(800, 600).
+
