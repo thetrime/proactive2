@@ -87,6 +87,7 @@ Proactive = {render: function(url, module, container)
                                                                    else if (rc == 4)
                                                                    {
                                                                        console.log("Exception getting components:" + Prolog.portray(Prolog.get_exception()));
+                                                                       Prolog.clear_exception();
                                                                    }
                                                                    else
                                                                        console.log("Failed to get components: " + rc);
@@ -245,6 +246,7 @@ Proactive = {render: function(url, module, container)
                                                              [Prolog.make_atom(module), Prolog.make_compound(Functor, args)]);
                              var rc = Prolog.call(env, Goal);
                              var result = handler.call(this, rc);
+                             Prolog.clear_exception();
                              Prolog.restore_state(checkpoint);
                              this.releaseEnvironment(env);
                              return result;
@@ -283,6 +285,7 @@ Proactive = {render: function(url, module, container)
                              var rc = Prolog.execute(env, Goal, function(success)
                                                      {
                                                          handler.call(this, success);
+                                                         Prolog.clear_exception();
                                                          this.releaseEnvironment(env);
                                                      }.bind(this));
                          }
