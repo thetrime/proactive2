@@ -353,6 +353,10 @@ module.exports = {jsToProlog: jsToProlog,
                                                              {integer: object.getSeconds()},
                                                              {integer: object.getMilliseconds()}]}};
                               }
+                              else if (object == null)
+                              {
+                                  value = {compound: {name: "{}", args: [{atom: "null"}]}};
+                              }
                               else
                               {
                                   value = {atom: object.toString()};
