@@ -451,12 +451,12 @@ react_clause(Module, Head):-
         functor(Head, Name, Arity),
         call(SourceModule:Head).
 
-user:term_expansion(requires(X), [depends_on(X), :-proactive:do_load_react_module(X)]).
+user:term_expansion(requires(X), [depends_on(X), :-proactive:do_load_proactive_module(X)]).
 
-:-multifile(proactive:load_react_module/1).
+:-multifile(proactive:load_proactive_module/1).
 
-do_load_react_module(X):-
-        ( proactive:load_react_module(X)->
+do_load_proactive_module(X):-
+        ( proactive:load_proactive_module(X)->
             true
         ; use_module(X)
         ).
