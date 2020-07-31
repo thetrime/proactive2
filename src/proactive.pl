@@ -285,8 +285,20 @@ send_reply(WebSocket, Term):-
 
 
 :-multifile(proactive_component_hook/2).
-% Define proactive_component_hook/2 clauses to extend the objects available in Proactive
-% FIXME: Implement this. Add extra args to Proactive.installComponents() and extra CSS/Javascript to the body
+% Add clauses to proactive:proactive_component_hook/2 to extend the objects available in Proactive
+% The first argument is the name of the object to install. This can either be a React object (ie a function) or an object where each key is a React object.
+% The second argument is a list of element/3 terms containing either script or link tags which will be loaded to make the object available.
+% The scripts are loaded in the body, and the links in the header. This allows react-bootstrap to get ready before the objects are loaded.
+
+proactive_component_hook('ReactBootstrap', [element(script, [src='https://unpkg.com/react-bootstrap@next/dist/react-bootstrap.js', crossorigin=anonymous], []),
+                                            element(link, [rel=stylesheet,
+                                                           href='https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css',
+                                                           integrity='sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk',
+                                                           crossorigin=anonymous], [])]).
+
+proactive_component_hook('Datetime', [element(script, [src='https://unpkg.com/moment@2.27.0/min/moment.min.js', crossorigin=anonymous], []),
+                                      element(script, [src='https://unpkg.com/react-datetime@2.16.3/dist/react-datetime.min.js', crossorigin=anonymous], []),
+                                      element(link, [rel=stylesheet, href='https://unpkg.com/react-datetime@2.16.3/css/react-datetime.css'], [])]).
 
 serve_proactive_form(FormId, Request):-
         ( predicate_property(proactive:allow_access_to_form(_), number_of_clauses(_))->
@@ -303,35 +315,40 @@ serve_proactive_form(FormId, Request):-
         parse_url(URL, [path(Path)|R1]),
         http_absolute_location(proactive('lib/proactive.js'), LibPath, []),
 
-        format(atom(Bootstrap), 'window.onPrologReady = function() {Proactive.installComponents(ReactBootstrap); Proactive.installComponents({Datetime: Datetime}); Proactive.render("~w", "~w", document.getElementById("container"));}; if (window.prologReady) {console.log("Prolog already ready. Booting proactive"); window.onPrologReady();}', [URL, FormId]),
+        findall(Object-Dependencies,
+                proactive_component_hook(Object, Dependencies),
+                ObjectDependencies),
+
+        process_object_dependencies(ObjectDependencies, InstallationCommands, Links, Scripts),
+        atomic_list_concat(InstallationCommands, ' ', ExtraInstallCode),
+        append(Scripts, [element(script, [type='text/javascript'], [Bootstrap])], BodyElements),
+
+
+
+        format(atom(Bootstrap), 'window.onPrologReady = function() {~w Proactive.render("~w", "~w", document.getElementById("container"));}; if (window.prologReady) {console.log("Prolog already ready. Booting proactive"); window.onPrologReady();}', [ExtraInstallCode, URL, FormId]),
 
         % Change development -> production.min to get minified version
         HTML = element(html, [], [element(head, [], [element(script, [src='https://unpkg.com/react/umd/react.development.js', crossorigin=anonymous], []),
                                                      element(script, [src='https://unpkg.com/react-dom/umd/react-dom.development.js', crossorigin=anonymous], []),
-                                                     element(script, [src=LibPath], []),
-                                                     element(link, [rel=stylesheet,
-                                                                    href='https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css',
-                                                                    integrity='sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk',
-                                                                    crossorigin=anonymous], [])]),
-                                  element(body, [], [element(div, [id=container], []),
-                                                     element(script, [src='https://unpkg.com/react-bootstrap@next/dist/react-bootstrap.js', crossorigin=anonymous], []),
-
-                                                     % This looks nicer but is very hard to serve from a CDN
-                                                     %element(script, [src='https://unpkg.com/prop-types@15.7.2/prop-types.min.js', crossorigin=anonymous], []),
-                                                     %element(script, [src='https://unpkg.com/react-onclickoutside@6.9.0/dist/react-onclickoutside.min.js', crossorigin=anonymous], []),
-                                                     %element(script, [src='https://cdn.date-fns.org/v2.0.0-alpha0/date_fns.min.js', crossorigin=anonymous], []),
-                                                     %element(script, [src='https://unpkg.com/react-datepicker@2.16/dist/react-datepicker.min.js', crossorigin=anonymous], []),
-
-
-                                                     % react-datetime and dependencies
-                                                     element(script, [src='https://unpkg.com/moment@2.27.0/min/moment.min.js', crossorigin=anonymous], []),
-                                                     element(script, [src='https://unpkg.com/react-datetime@2.16.3/dist/react-datetime.min.js', crossorigin=anonymous], []),
-                                                     element(link, [rel=stylesheet, href='https://unpkg.com/react-datetime@2.16.3/css/react-datetime.css'], []),
-
-                                                     element(script, [type='text/javascript'], [Bootstrap])])]),
+                                                     element(script, [src=LibPath], [])|Links]),
+                                  element(body, [], [element(div, [id=container], [])|BodyElements])]),
         format(current_output, 'Content-type: text/html~n~n', []),
         html_write(current_output, HTML, []).
 
+process_object_dependencies([], [], [], []):- !.
+process_object_dependencies([ObjectName-Dependencies|Objects], [Install|Installations], Links, Scripts):-
+        format(atom(Install), 'Proactive.installComponents("~w", ~w);', [ObjectName, ObjectName]),
+        split_dependencies(Dependencies, Links, LinksTail, Scripts, ScriptsTail),
+        process_object_dependencies(Objects, Installations, LinksTail, ScriptsTail).
+
+split_dependencies([], Links, Links, Scripts, Scripts):- !.
+split_dependencies([element(script, Attributes, Children)|Dependencies], Links, LinksTail, [element(script, Attributes, Children)|S1], ScriptsTail):-
+        !,
+        split_dependencies(Dependencies, Links, LinksTail, S1, ScriptsTail).
+
+split_dependencies([element(link, Attributes, Children)|Dependencies], [element(link, Attributes, Children)|L1], LinksTail, Scripts, ScriptsTail):-
+        !,
+        split_dependencies(Dependencies, L1, LinksTail, Scripts, ScriptsTail).
 
 
 :-multifile(proactive:allow_access_to_form/1).

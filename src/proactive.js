@@ -35,11 +35,16 @@ function dispatchGlobalEvent()
     event.caller.dispatchAnEvent(event);
 }
 
-Proactive = {installComponents: function(object)
+Proactive = {installComponents: function(name, object)
              {
-                 Object.assign(externalClasses, object);
-                 console.log("Installed. Classes are now:");
-                 console.log(externalClasses);
+                 if (typeof object == "function")
+                 {
+                     var shim = {};
+                     shim[name] = object;
+                     Object.assign(externalClasses, shim);
+                 }
+                 else
+                     Object.assign(externalClasses, object);
              },
              render: function(url, module, container)
              {
