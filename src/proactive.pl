@@ -428,7 +428,7 @@ related_react_module(Module, Related):-
         current_predicate(_, Module:depends_on(_)),
         predicate_property(Module:depends_on(_), interpreted),
         \+predicate_property(Module:depends_on(_), imported_from(_)),
-        clause(Module:depends_on(SubModule), _, _),
+        call(Module:depends_on(SubModule)),
         related_react_module(SubModule, Related).
 
 
