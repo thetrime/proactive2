@@ -470,3 +470,17 @@ user:bubble_event(_, _, Event):-
         permission_error(handle, event, Event).
 user:media_size(800, 600).
 
+
+user:message_hook(redefined_procedure(static,('.')/3), _, _).  % Stop the compiler complaining about this
+:-redefine_system_predicate('.'(_,_,_)).
+user:'.'(State,Key,Value):-
+        ( State == {null}->
+            Value = {null}
+        ; is_dict(State),
+          atom(Key)->
+            ( get_dict(Key, State, Value)->
+                true
+            ; Value = {null}
+            )
+	; '$dicts':'.'(State, Key, Value)
+	).
