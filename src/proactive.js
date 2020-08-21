@@ -112,7 +112,17 @@ Proactive = {installComponents: function(name, object)
                                         {
                                             if (Prolog.is_compound(SystemMessage) && Prolog.term_functor(SystemMessage) == Constants.consultedFunctor)
                                             {
-                                                make();
+                                                pendingEvents.push({caller: {dispatchAnEvent: function()
+                                                                             {
+                                                                                 make();
+                                                                                 if (pendingEvents.length == 0)
+                                                                                     currentlyProcessingEvents = false;
+                                                                                 else
+                                                                                     dispatchGlobalEvent();
+                                                                             }}
+                                                                   });
+                                                if (!currentlyProcessingEvents)
+                                                    dispatchGlobalEvent();
                                             }
                                         });
 
